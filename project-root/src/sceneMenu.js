@@ -1,0 +1,556 @@
+/**
+ * SCENE MENU
+ * Menu chính, Chọn Phi Thuyền, Nút Xuất Kích, Nút Cài Đặt (Settings), Nút Thông Tin (Info), Bầu Trời Sao & Các Hành Tinh Parallax
+ * Copyright @2026 TP Dragonsoft
+ */
+
+class MenuScene extends Phaser.Scene {
+    constructor() {
+        super({ key: 'MenuScene' });
+        this.selectedShipBase = 'player1';
+    }
+
+    create() {
+        const { width, height } = this.scale;
+
+        // 1. Tạo Bầu Trời Sao Parallax Động
+        this.createStarfield();
+
+        // 2. Tạo Các Hành Tinh Vũ Trụ Trôi Dạt
+        this.createFloatingPlanets();
+
+        // 3. Tiêu Đề Game Rực Rỡ
+        const titleContainer = this.add.container(width / 2, height * 0.15);
+        
+        const titleGlow = this.add.text(0, 0, 'PHI THUYỀN KHÔNG GIAN', {
+            fontFamily: 'Orbitron, sans-serif',
+            fontSize: Math.min(width * 0.07, 34) + 'px',
+            fontWeight: '900',
+            color: '#00f0ff',
+            align: 'center'
+        }).setOrigin(0.5).setShadow(0, 0, '#00f0ff', 16);
+
+        const subTitle = this.add.text(0, 34, '★ GALACTIC GUARDIAN ★', {
+            fontFamily: 'Rajdhani, sans-serif',
+            fontSize: '17px',
+            fontWeight: '700',
+            color: '#ffcc00',
+            letterSpacing: 4
+        }).setOrigin(0.5);
+
+        titleContainer.add([titleGlow, subTitle]);
+
+        this.tweens.add({
+            targets: titleGlow,
+            scale: 1.04,
+            duration: 1200,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+
+        // 4. Khu Vực Chọn Phi Thuyền (Ship Selection)
+        this.createShipSelector(width / 2, height * 0.45);
+
+        // 5. Hướng Dẫn Điều Khiển Rút Gọn
+        this.add.text(width / 2, height * 0.69, '📱 Mobile: Cần gạt + Bắn + [E] | 💻 PC: WASD + Chuột + Space + [E] Thu Phục', {
+            fontFamily: 'Rajdhani, sans-serif',
+            fontSize: '14px',
+            fontWeight: '600',
+            color: '#00f0ff',
+            align: 'center'
+        }).setOrigin(0.5);
+
+        // 6. Nút Bắt Đầu (Start Button)
+        const btnStart = this.add.container(width / 2, height * 0.78);
+        
+        const btnBg = this.add.graphics();
+        btnBg.fillStyle(0x0077ff, 0.95);
+        btnBg.fillRoundedRect(-110, -22, 220, 44, 22);
+        btnBg.lineStyle(2, 0x00f0ff, 1);
+        btnBg.strokeRoundedRect(-110, -22, 220, 44, 22);
+
+        const btnText = this.add.text(0, 0, 'XUẤT KÍCH ▶', {
+            fontFamily: 'Orbitron, sans-serif',
+            fontSize: '17px',
+            fontWeight: '900',
+            color: '#ffffff'
+        }).setOrigin(0.5);
+
+        btnStart.add([btnBg, btnText]);
+        btnStart.setSize(220, 44);
+        btnStart.setInteractive({ useHandCursor: true });
+
+        btnStart.on('pointerover', () => {
+            btnBg.clear();
+            btnBg.fillStyle(0x00aaff, 1);
+            btnBg.fillRoundedRect(-110, -22, 220, 44, 22);
+            btnBg.lineStyle(2, 0xffffff, 1);
+            btnBg.strokeRoundedRect(-110, -22, 220, 44, 22);
+        });
+
+        btnStart.on('pointerout', () => {
+            btnBg.clear();
+            btnBg.fillStyle(0x0077ff, 0.95);
+            btnBg.fillRoundedRect(-110, -22, 220, 44, 22);
+            btnBg.lineStyle(2, 0x00f0ff, 1);
+            btnBg.strokeRoundedRect(-110, -22, 220, 44, 22);
+        });
+
+        btnStart.on('pointerdown', () => {
+            window.soundFX.init();
+            window.soundFX.playPowerup();
+            const isPortrait = this.scale.height >= this.scale.width;
+            const shipType = this.selectedShipBase + (isPortrait ? 'a' : 'b');
+            this.scene.start('GameScene', { shipType: shipType });
+        });
+
+        // 7. CẶP NÚT CÀI ĐẶT & THÔNG TIN DƯỚI NÚT XUẤT KÍCH
+        const subButtonsY = height * 0.87;
+
+        // Nút Cài Đặt (Settings)
+        const btnSettings = this.add.container(width / 2 - 66, subButtonsY);
+        const bgSet = this.add.graphics();
+        bgSet.fillStyle(0x0f172a, 0.9);
+        bgSet.fillRoundedRect(-56, -18, 112, 36, 18);
+        bgSet.lineStyle(1.5, 0x00f0ff, 0.8);
+        bgSet.strokeRoundedRect(-56, -18, 112, 36, 18);
+
+        const txtSet = this.add.text(0, 0, '⚙️ CÀI ĐẶT', {
+            fontFamily: 'Rajdhani, sans-serif',
+            fontSize: '15px',
+            fontWeight: '700',
+            color: '#00f0ff'
+        }).setOrigin(0.5);
+
+        btnSettings.add([bgSet, txtSet]);
+        btnSettings.setSize(112, 36);
+        btnSettings.setInteractive({ useHandCursor: true });
+
+        btnSettings.on('pointerover', () => {
+            bgSet.clear();
+            bgSet.fillStyle(0x1e293b, 1);
+            bgSet.fillRoundedRect(-56, -18, 112, 36, 18);
+            bgSet.lineStyle(2, 0xffffff, 1);
+            bgSet.strokeRoundedRect(-56, -18, 112, 36, 18);
+            txtSet.setColor('#ffffff');
+        });
+
+        btnSettings.on('pointerout', () => {
+            bgSet.clear();
+            bgSet.fillStyle(0x0f172a, 0.9);
+            bgSet.fillRoundedRect(-56, -18, 112, 36, 18);
+            bgSet.lineStyle(1.5, 0x00f0ff, 0.8);
+            bgSet.strokeRoundedRect(-56, -18, 112, 36, 18);
+            txtSet.setColor('#00f0ff');
+        });
+
+        btnSettings.on('pointerdown', () => {
+            window.soundFX.init();
+            window.soundFX.playLaser(1.2);
+            this.showSettingsModal();
+        });
+
+        // Nút Thông Tin (Info)
+        const btnInfo = this.add.container(width / 2 + 66, subButtonsY);
+        const bgInfo = this.add.graphics();
+        bgInfo.fillStyle(0x0f172a, 0.9);
+        bgInfo.fillRoundedRect(-56, -18, 112, 36, 18);
+        bgInfo.lineStyle(1.5, 0xffcc00, 0.8);
+        bgInfo.strokeRoundedRect(-56, -18, 112, 36, 18);
+
+        const txtInfo = this.add.text(0, 0, 'ℹ️ INFO', {
+            fontFamily: 'Rajdhani, sans-serif',
+            fontSize: '15px',
+            fontWeight: '700',
+            color: '#ffcc00'
+        }).setOrigin(0.5);
+
+        btnInfo.add([bgInfo, txtInfo]);
+        btnInfo.setSize(112, 36);
+        btnInfo.setInteractive({ useHandCursor: true });
+
+        btnInfo.on('pointerover', () => {
+            bgInfo.clear();
+            bgInfo.fillStyle(0x1e293b, 1);
+            bgInfo.fillRoundedRect(-56, -18, 112, 36, 18);
+            bgInfo.lineStyle(2, 0xffffff, 1);
+            bgInfo.strokeRoundedRect(-56, -18, 112, 36, 18);
+            txtInfo.setColor('#ffffff');
+        });
+
+        btnInfo.on('pointerout', () => {
+            bgInfo.clear();
+            bgInfo.fillStyle(0x0f172a, 0.9);
+            bgInfo.fillRoundedRect(-56, -18, 112, 36, 18);
+            bgInfo.lineStyle(1.5, 0xffcc00, 0.8);
+            bgInfo.strokeRoundedRect(-56, -18, 112, 36, 18);
+            txtInfo.setColor('#ffcc00');
+        });
+
+        btnInfo.on('pointerdown', () => {
+            window.soundFX.init();
+            window.soundFX.playLaser(1.2);
+            this.showInfoModal();
+        });
+
+        // 8. COPYRIGHT FOOTER CREDIT
+        this.add.text(width / 2, height * 0.95, 'Copyright @2026 TP Dragonsoft', {
+            fontFamily: 'Rajdhani, sans-serif',
+            fontSize: '13px',
+            fontWeight: '600',
+            color: '#64748b',
+            letterSpacing: 1
+        }).setOrigin(0.5);
+
+        // Resize Listener
+        this.scale.on('resize', () => {
+            this.scene.restart();
+        });
+    }
+
+    createStarfield() {
+        const { width, height } = this.scale;
+        this.stars = [];
+        for (let i = 0; i < 80; i++) {
+            const star = this.add.circle(
+                Phaser.Math.Between(0, width),
+                Phaser.Math.Between(0, height),
+                Phaser.Math.FloatBetween(0.5, 2),
+                0xffffff,
+                Phaser.Math.FloatBetween(0.3, 0.9)
+            );
+            star.speed = Phaser.Math.FloatBetween(0.3, 1.8);
+            this.stars.push(star);
+        }
+    }
+
+    createFloatingPlanets() {
+        const { width, height } = this.scale;
+
+        if (this.textures.exists('traidat')) {
+            const earth = this.add.image(width * 0.85, height * 0.15, 'traidat')
+                .setDisplaySize(120, 120)
+                .setAlpha(0.75);
+            this.tweens.add({
+                targets: earth,
+                rotation: Math.PI * 2,
+                duration: 45000,
+                repeat: -1
+            });
+        }
+
+        if (this.textures.exists('saotho')) {
+            const saturn = this.add.image(width * 0.15, height * 0.82, 'saotho')
+                .setDisplaySize(140, 100)
+                .setAlpha(0.65);
+            this.tweens.add({
+                targets: saturn,
+                y: height * 0.80,
+                duration: 4000,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut'
+            });
+        }
+
+        if (this.textures.exists('phihanhgia')) {
+            const astronaut = this.add.image(width * 0.2, height * 0.28, 'phihanhgia')
+                .setDisplaySize(50, 50);
+            this.tweens.add({
+                targets: astronaut,
+                y: height * 0.32,
+                rotation: 0.4,
+                duration: 3500,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut'
+            });
+        }
+    }
+
+    createShipSelector(x, y) {
+        const container = this.add.container(x, y);
+        const isPortrait = this.scale.height >= this.scale.width;
+
+        const frame = this.add.graphics();
+        frame.fillStyle(0x0a1628, 0.85);
+        frame.fillRoundedRect(-160, -95, 320, 190, 18);
+        frame.lineStyle(2, 0x00f0ff, 0.7);
+        frame.strokeRoundedRect(-160, -95, 320, 190, 18);
+
+        const selectTitle = this.add.text(0, -70, 'CHỌN PHI THUYỀN', {
+            fontFamily: 'Rajdhani, sans-serif',
+            fontSize: '18px',
+            fontWeight: '700',
+            color: '#00f0ff',
+            letterSpacing: 2
+        }).setOrigin(0.5);
+
+        const initialKey = this.selectedShipBase + (isPortrait ? 'a' : 'b');
+        const shipImg = this.add.image(0, 0, initialKey);
+        this.fitShipPreview(shipImg, isPortrait);
+
+        this.tweens.add({
+            targets: shipImg,
+            y: isPortrait ? -6 : -4,
+            duration: 1500,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+
+        const shipName = this.add.text(0, 62, this.selectedShipBase === 'player1' ? 'CHIẾN HẠM ALPHA (P1)' : 'CHIẾN HẠM PHANTOM (P2)', {
+            fontFamily: 'Orbitron, sans-serif',
+            fontSize: '14px',
+            fontWeight: '800',
+            color: '#ffffff'
+        }).setOrigin(0.5).setShadow(0, 0, '#00f0ff', 8);
+
+        const arrowLeft = this.add.text(-120, 0, '◀', {
+            fontFamily: 'Orbitron, sans-serif',
+            fontSize: '32px',
+            color: '#00f0ff'
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        const arrowRight = this.add.text(120, 0, '▶', {
+            fontFamily: 'Orbitron, sans-serif',
+            fontSize: '32px',
+            color: '#00f0ff'
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        arrowLeft.on('pointerover', () => arrowLeft.setScale(1.2).setColor('#ffffff'));
+        arrowLeft.on('pointerout', () => arrowLeft.setScale(1.0).setColor('#00f0ff'));
+        arrowRight.on('pointerover', () => arrowRight.setScale(1.2).setColor('#ffffff'));
+        arrowRight.on('pointerout', () => arrowRight.setScale(1.0).setColor('#00f0ff'));
+
+        const toggleShip = () => {
+            const currentIsPortrait = this.scale.height >= this.scale.width;
+            if (this.selectedShipBase === 'player1') {
+                this.selectedShipBase = 'player2';
+                shipName.setText('CHIẾN HẠM PHANTOM (P2)');
+            } else {
+                this.selectedShipBase = 'player1';
+                shipName.setText('CHIẾN HẠM ALPHA (P1)');
+            }
+            const newKey = this.selectedShipBase + (currentIsPortrait ? 'a' : 'b');
+            if (this.textures.exists(newKey)) {
+                shipImg.setTexture(newKey);
+                this.fitShipPreview(shipImg, currentIsPortrait);
+            }
+            window.soundFX.playLaser(1.5);
+        };
+
+        arrowLeft.on('pointerdown', toggleShip);
+        arrowRight.on('pointerdown', toggleShip);
+
+        container.add([frame, selectTitle, shipImg, shipName, arrowLeft, arrowRight]);
+    }
+
+    fitShipPreview(shipImg, isPortrait) {
+        if (isPortrait) {
+            shipImg.setDisplaySize(95, 95);
+        } else {
+            const origW = shipImg.width || 64;
+            const origH = shipImg.height || 64;
+            const targetW = 130;
+            const targetH = (origH / origW) * targetW;
+            shipImg.setDisplaySize(targetW, targetH);
+        }
+    }
+
+    /**
+     * BẢNG CÀI ĐẶT (SETTINGS MODAL)
+     */
+    showSettingsModal() {
+        if (this.currentModal) this.currentModal.destroy();
+
+        const { width, height } = this.scale;
+        const modal = this.add.container(width / 2, height / 2).setDepth(50);
+        this.currentModal = modal;
+
+        const backdrop = this.add.rectangle(0, 0, width * 2, height * 2, 0x000000, 0.7)
+            .setInteractive();
+
+        const box = this.add.graphics();
+        box.fillStyle(0x0a1628, 0.95);
+        box.fillRoundedRect(-155, -160, 310, 320, 16);
+        box.lineStyle(2, 0x00f0ff, 0.9);
+        box.strokeRoundedRect(-155, -160, 310, 320, 16);
+
+        const title = this.add.text(0, -120, '⚙️ CÀI ĐẶT HỆ THỐNG', {
+            fontFamily: 'Orbitron, sans-serif',
+            fontSize: '18px',
+            fontWeight: '900',
+            color: '#00f0ff'
+        }).setOrigin(0.5);
+
+        // 1. Tùy chọn Âm thanh
+        const soundLabel = this.add.text(-120, -60, '🔊 Âm thanh (SFX):', {
+            fontFamily: 'Rajdhani, sans-serif',
+            fontSize: '16px',
+            fontWeight: '700',
+            color: '#ffffff'
+        });
+
+        const isMuted = window.soundFX && window.soundFX.ctx && window.soundFX.ctx.state === 'suspended';
+        const soundBtn = this.add.text(60, -50, isMuted ? 'TẮT ✕' : 'BẬT ✓', {
+            fontFamily: 'Orbitron, sans-serif',
+            fontSize: '13px',
+            fontWeight: '800',
+            color: isMuted ? '#ff0055' : '#00ff88',
+            backgroundColor: '#1e293b',
+            padding: { left: 10, right: 10, top: 4, bottom: 4 }
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        soundBtn.on('pointerdown', () => {
+            if (window.soundFX.ctx) {
+                if (window.soundFX.ctx.state === 'running') {
+                    window.soundFX.ctx.suspend();
+                    soundBtn.setText('TẮT ✕').setColor('#ff0055');
+                } else {
+                    window.soundFX.ctx.resume();
+                    soundBtn.setText('BẬT ✓').setColor('#00ff88');
+                    window.soundFX.playLaser();
+                }
+            }
+        });
+
+        // 2. Tùy chọn Đồ họa
+        const gfxLabel = this.add.text(-120, 0, '✨ Đồ họa (VFX):', {
+            fontFamily: 'Rajdhani, sans-serif',
+            fontSize: '16px',
+            fontWeight: '700',
+            color: '#ffffff'
+        });
+
+        const gfxBtn = this.add.text(60, 10, 'CAO (60 FPS)', {
+            fontFamily: 'Orbitron, sans-serif',
+            fontSize: '12px',
+            fontWeight: '800',
+            color: '#00f0ff',
+            backgroundColor: '#1e293b',
+            padding: { left: 8, right: 8, top: 4, bottom: 4 }
+        }).setOrigin(0.5);
+
+        // 3. Tùy chọn Điều khiển
+        const ctrlLabel = this.add.text(-120, 60, '🎮 Điều khiển:', {
+            fontFamily: 'Rajdhani, sans-serif',
+            fontSize: '16px',
+            fontWeight: '700',
+            color: '#ffffff'
+        });
+
+        const ctrlInfo = this.add.text(60, 70, 'TỰ ĐỘNG', {
+            fontFamily: 'Orbitron, sans-serif',
+            fontSize: '12px',
+            fontWeight: '800',
+            color: '#ffcc00',
+            backgroundColor: '#1e293b',
+            padding: { left: 8, right: 8, top: 4, bottom: 4 }
+        }).setOrigin(0.5);
+
+        // Nút Đóng
+        const btnClose = this.add.text(0, 125, 'ĐÓNG ✕', {
+            fontFamily: 'Orbitron, sans-serif',
+            fontSize: '14px',
+            fontWeight: '800',
+            color: '#ffffff',
+            backgroundColor: '#ff0055',
+            padding: { left: 24, right: 24, top: 8, bottom: 8 }
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        btnClose.on('pointerdown', () => {
+            modal.destroy();
+            this.currentModal = null;
+        });
+
+        modal.add([backdrop, box, title, soundLabel, soundBtn, gfxLabel, gfxBtn, ctrlLabel, ctrlInfo, btnClose]);
+    }
+
+    /**
+     * BẢNG THÔNG TIN (INFO MODAL) - NHÀ PHÁT TRIỂN: TP DRAGONSOFT
+     */
+    showInfoModal() {
+        if (this.currentModal) this.currentModal.destroy();
+
+        const { width, height } = this.scale;
+        const modal = this.add.container(width / 2, height / 2).setDepth(50);
+        this.currentModal = modal;
+
+        const backdrop = this.add.rectangle(0, 0, width * 2, height * 2, 0x000000, 0.7)
+            .setInteractive();
+
+        const box = this.add.graphics();
+        box.fillStyle(0x0a1628, 0.95);
+        box.fillRoundedRect(-160, -190, 320, 380, 16);
+        box.lineStyle(2, 0xffcc00, 0.9);
+        box.strokeRoundedRect(-160, -190, 320, 380, 16);
+
+        const title = this.add.text(0, -155, 'ℹ️ HƯỚNG DẪN & THÔNG TIN', {
+            fontFamily: 'Orbitron, sans-serif',
+            fontSize: '15px',
+            fontWeight: '900',
+            color: '#ffcc00'
+        }).setOrigin(0.5);
+
+        const infoContent = 
+            '🚀 PHI THUYỀN KHÔNG GIAN\n\n' +
+            '🔮 NGỌC THU PHỤC: Bấm [E] để phóng\n' +
+            '   Tia Sét hút Ngọc (Tối đa 3 ĐỒNG MINH).\n\n' +
+            '🛰️ VỆ TINH: Bắn nổ để kích hoạt\n' +
+            '   Auto Rocket tìm diệt mỗi 3s.\n\n' +
+            '⚡ CHIÊU CUỐI:\n' +
+            '   P1 ALPHA: Tia Laze Blue khổng lồ.\n' +
+            '   P2 PHANTOM: Phóng SÉT giáng đối thủ.\n\n' +
+            '🌍 3 ROUND THÁCH THỨC (20 Wave/Boss):\n' +
+            '   R1: Không gian - Boss Trùm.\n' +
+            '   R2: Top-down - Enemy2 + Boss Phantom.\n' +
+            '   R3: Mưa thiên thạch + Enemy3\n' +
+            '   phun cục lửa, số lượng cực đông!\n\n' +
+            '📱 Mobile: Cần gạt + Nút bắn + [E]\n' +
+            '💻 PC: WASD + Chuột + Space + [E]\n\n' +
+            '🏢 Nhà phát triển: TP Dragonsoft\n' +
+            '© Copyright @2026 TP Dragonsoft';
+
+        const infoText = this.add.text(0, -15, infoContent, {
+            fontFamily: 'Rajdhani, sans-serif',
+            fontSize: '13.5px',
+            fontWeight: '600',
+            color: '#e2e8f0',
+            align: 'left',
+            lineSpacing: 2
+        }).setOrigin(0.5);
+
+        const btnClose = this.add.text(0, 150, 'ĐÃ HIỂU ✓', {
+            fontFamily: 'Orbitron, sans-serif',
+            fontSize: '14px',
+            fontWeight: '800',
+            color: '#030712',
+            backgroundColor: '#ffcc00',
+            padding: { left: 24, right: 24, top: 7, bottom: 7 }
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        btnClose.on('pointerdown', () => {
+            modal.destroy();
+            this.currentModal = null;
+        });
+
+        modal.add([backdrop, box, title, infoText, btnClose]);
+    }
+
+    update() {
+        const { height } = this.scale;
+        if (this.stars) {
+            for (let star of this.stars) {
+                star.y += star.speed;
+                if (star.y > height) {
+                    star.y = 0;
+                    star.x = Phaser.Math.Between(0, this.scale.width);
+                }
+            }
+        }
+    }
+}
+
+window.MenuScene = MenuScene;

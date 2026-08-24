@@ -1,0 +1,332 @@
+/* =========================================================
+   GALACTIC GUARDIAN - SPACE SHOOTER MOBILE & PC
+   Modern Sci-Fi Cyberpunk UI & Mobile Responsive Styles
+   ========================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;700&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: none;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #030712;
+    background-image: radial-gradient(circle at 50% 50%, #0a1128 0%, #030712 100%);
+    font-family: 'Orbitron', 'Rajdhani', sans-serif;
+    color: #ffffff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+canvas {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    box-shadow: 0 0 50px rgba(0, 200, 255, 0.15);
+}
+
+/* =========================================================
+   MOBILE TOUCH CONTROLS OVERLAY (HTML/CSS LAYER)
+   ========================================================= */
+#mobile-controls {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 50;
+}
+
+/* Virtual Joystick Zone */
+.joystick-zone {
+    position: absolute;
+    bottom: 25px;
+    left: 25px;
+    width: 160px;
+    height: 160px;
+    pointer-events: auto;
+    touch-action: none;
+}
+
+.joystick-base {
+    position: absolute;
+    width: 140px;
+    height: 140px;
+    top: 10px;
+    left: 10px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0, 240, 255, 0.1) 0%, rgba(0, 100, 200, 0.25) 100%);
+    border: 2px solid rgba(0, 240, 255, 0.5);
+    box-shadow: 0 0 20px rgba(0, 240, 255, 0.3), inset 0 0 15px rgba(0, 240, 255, 0.2);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: opacity 0.2s;
+}
+
+.joystick-stick {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #00f0ff 0%, #0077ff 70%, #0033aa 100%);
+    border: 2px solid #ffffff;
+    box-shadow: 0 0 18px rgba(0, 240, 255, 0.8);
+    transform: translate(0px, 0px);
+    pointer-events: none;
+}
+
+/* Action Buttons Zone (Right Side) */
+.action-zone {
+    position: absolute;
+    bottom: 25px;
+    right: 25px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-end;
+    pointer-events: auto;
+}
+
+.action-btn {
+    position: relative;
+    border: none;
+    outline: none;
+    border-radius: 50%;
+    cursor: pointer;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 800;
+    color: #ffffff;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+    transition: transform 0.1s, box-shadow 0.15s, background 0.2s;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.action-btn:active {
+    transform: scale(0.92);
+}
+
+.btn-fire {
+    width: 80px;
+    height: 80px;
+    background: radial-gradient(circle at 35% 35%, #ff4b4b 0%, #d80027 70%, #7b0014 100%);
+    border: 2px solid #ff8888;
+    box-shadow: 0 0 25px rgba(255, 75, 75, 0.6);
+    font-size: 13px;
+    letter-spacing: 1px;
+}
+
+.btn-fire.active {
+    box-shadow: 0 0 35px rgba(255, 75, 75, 0.9), inset 0 0 15px rgba(255, 255, 255, 0.4);
+    border-color: #ffffff;
+}
+
+.btn-capture {
+    width: 65px;
+    height: 65px;
+    background: radial-gradient(circle at 35% 35%, #00ffff 0%, #7928ca 70%, #2a085c 100%);
+    border: 2px solid #00f0ff;
+    box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+    font-size: 11px;
+    display: none; /* Hiện khi có ngọc trên màn hình */
+}
+
+.btn-capture.active-orb {
+    display: flex;
+    animation: capturePulse 0.8s infinite alternate ease-in-out;
+}
+
+@keyframes capturePulse {
+    0% {
+        box-shadow: 0 0 15px rgba(0, 240, 255, 0.6), 0 0 30px rgba(153, 0, 255, 0.4);
+        border-color: #00f0ff;
+        transform: scale(0.96);
+    }
+    100% {
+        box-shadow: 0 0 30px rgba(0, 240, 255, 1), 0 0 50px rgba(153, 0, 255, 0.9), inset 0 0 14px #ffffff;
+        border-color: #ffffff;
+        transform: scale(1.12);
+    }
+}
+
+.btn-ultimate {
+    width: 65px;
+    height: 65px;
+    background: radial-gradient(circle at 35% 35%, #ffd700 0%, #ff8c00 70%, #b84500 100%);
+    border: 2px solid #ffe680;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+    font-size: 11px;
+    letter-spacing: 0.5px;
+}
+
+.btn-ultimate:disabled {
+    filter: grayscale(0.8) opacity(0.5);
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+.btn-ultimate.ready {
+    animation: pulseGlow 1.2s infinite alternate;
+}
+
+@keyframes pulseGlow {
+    0% {
+        box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+        border-color: #ffd700;
+    }
+    100% {
+        box-shadow: 0 0 35px rgba(255, 215, 0, 1), inset 0 0 12px rgba(255, 255, 255, 0.8);
+        border-color: #ffffff;
+        transform: scale(1.05);
+    }
+}
+
+/* Quick Control Buttons (Top Right) */
+.top-controls {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    display: flex;
+    gap: 10px;
+    pointer-events: auto;
+    z-index: 60;
+}
+
+.icon-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: rgba(10, 25, 50, 0.65);
+    border: 1px solid rgba(0, 240, 255, 0.4);
+    backdrop-filter: blur(8px);
+    color: #00f0ff;
+    font-size: 18px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.icon-btn:hover {
+    background: rgba(0, 240, 255, 0.2);
+    border-color: #00f0ff;
+    transform: translateY(-2px);
+    box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+}
+
+.icon-btn:active {
+    transform: scale(0.95);
+}
+
+/* Notification Banner (Astronaut Rescue, Wave Clear, etc.) */
+#notification-banner {
+    position: absolute;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    padding: 10px 24px;
+    background: linear-gradient(135deg, rgba(0, 240, 255, 0.25), rgba(0, 100, 255, 0.4));
+    border: 1px solid #00f0ff;
+    border-radius: 30px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 0 25px rgba(0, 240, 255, 0.5);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #ffffff;
+    pointer-events: none;
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 70;
+}
+
+#notification-banner.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Orientation Hint for Mobile */
+#orientation-hint {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(3, 7, 18, 0.95);
+    z-index: 999;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 20px;
+}
+
+#orientation-hint .hint-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    animation: rotatePhone 2s infinite ease-in-out;
+}
+
+@keyframes rotatePhone {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(90deg); }
+}
+
+/* Responsive Customizations */
+@media (max-width: 768px) {
+    .joystick-zone {
+        bottom: 20px;
+        left: 20px;
+        width: 140px;
+        height: 140px;
+    }
+    .joystick-base {
+        width: 120px;
+        height: 120px;
+    }
+    .joystick-stick {
+        width: 50px;
+        height: 50px;
+    }
+    .btn-fire {
+        width: 70px;
+        height: 70px;
+        font-size: 12px;
+    }
+    .btn-ultimate {
+        width: 58px;
+        height: 58px;
+        font-size: 10px;
+    }
+}

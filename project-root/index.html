@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#030712">
+    <title>Phi Thuyền Không Gian - Mobile Space Shooter</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+    
+    <!-- CSS Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Phaser 3.80+ Engine CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+</head>
+<body>
+
+    <div id="game-container"></div>
+
+    <!-- HTML/CSS Overlay for Mobile Controls -->
+    <div id="mobile-controls">
+        <!-- Top Toolbar -->
+        <div class="top-controls">
+            <button id="btn-sound" class="icon-btn" title="Âm thanh" aria-label="Bật tắt âm thanh">🔊</button>
+            <button id="btn-pause" class="icon-btn" title="Tạm dừng" aria-label="Tạm dừng">⏸️</button>
+            <button id="btn-fullscreen" class="icon-btn" title="Toàn màn hình" aria-label="Toàn màn hình">⛶</button>
+        </div>
+
+        <!-- Notification Banner -->
+        <div id="notification-banner">ĐÃ CỨU PHI HÀNH GIA! +500 PTS</div>
+
+        <!-- Virtual Joystick Area (Left) -->
+        <div id="joystick-zone" class="joystick-zone">
+            <div class="joystick-base" id="joystick-base">
+                <div class="joystick-stick" id="joystick-stick"></div>
+            </div>
+        </div>
+
+        <!-- Action Buttons (Right) -->
+        <div class="action-zone" id="action-zone">
+            <button id="btn-capture" class="action-btn btn-capture" title="Thu phục ngọc đồng minh (Phím E)">
+                <span>🔮 [E]</span>
+                <small>THU PHỤC</small>
+            </button>
+            <button id="btn-ultimate" class="action-btn btn-ultimate" title="Chiêu cuối" disabled>
+                <span>ULT</span>
+                <small id="ult-text">0%</small>
+            </button>
+            <button id="btn-fire" class="action-btn btn-fire" title="Bắn">
+                <span>BẮN</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Mobile Orientation Hint (Optional) -->
+    <div id="orientation-hint">
+        <div class="hint-icon">📱 ➔ 📲</div>
+        <h2>XOAY THIẾT BỊ</h2>
+        <p>Game hỗ trợ cả chế độ Màn hình Dọc và Ngang tốt nhất!</p>
+    </div>
+
+    <!-- Game Scripts (in exact order) -->
+    <script src="src/preload.js"></script>
+    <script src="src/sceneUI.js"></script>
+    <script src="src/sceneMenu.js"></script>
+    <script src="src/sceneGame.js"></script>
+    <script src="src/main.js"></script>
+
+</body>
+</html>
