@@ -13,7 +13,7 @@ class GameScene extends Phaser.Scene {
 
     init(data) {
         this.selectedShipBase = data.shipType ? (data.shipType.startsWith('player2') ? 'player2' : 'player1') : 'player1';
-        this.round = data.round || 1; // HỆ THỐNG ROUND: 1 / 2 / 3
+        this.round = Number(data && data.round !== undefined ? data.round : 1) || 1; // HỆ THỐNG ROUND: 1 / 2 / 3
         this.score = 0;
         this.rescuedCount = 0;
         this.killCount = 0;
@@ -41,6 +41,15 @@ class GameScene extends Phaser.Scene {
         this.hasHomingRockets = false;
         this.homingRockets = null;
 
+        // DUO BOSS (ROUND 2) & HEALING PROPERTIES
+        this.bossRed = null;
+        this.bossGreen = null;
+        this.redBossTag = null;
+        this.greenBossTag = null;
+        this.greenMedicOrbs = null;
+        this.isHealingActive = false;
+        this.bossHealTimer = null;
+
         // Xác định hướng màn hình
         this.isPortrait = this.scale.height >= this.scale.width;
     }
@@ -55,7 +64,6 @@ class GameScene extends Phaser.Scene {
 
         // 1. Tạo Bầu Trời Sao & Các Tầng Hành Tinh Parallax
         this.createSpaceEnvironment();
-        this.createGameplayBackground();
 
         // 2. Tạo Emitter Hạt (Thrusters, Sparks, Explosions)
         this.createParticleSystems();
@@ -74,6 +82,7 @@ class GameScene extends Phaser.Scene {
         this.allyBullets = this.physics.add.group({ maxSize: 60 });
         this.meteors = this.physics.add.group(); // NHÓM THIÊN THẠCH (ROUND 3)
         this.electricBeamGraphics = this.add.graphics().setDepth(22);
+        this.healBeamGraphics = this.add.graphics().setDepth(15);
         this.allyLinkGraphics = this.add.graphics().setDepth(12);
         this.electricShieldArcGraphics = this.add.graphics().setDepth(12);
         this.lastAllyFireTime = 0;
@@ -150,37 +159,71 @@ class GameScene extends Phaser.Scene {
     }
 
     /**
-     * NỀN ROUND 2/3: ẢNH NHÌN TỪ TRÊN XUỐNG CUỐN LIÊN TỤC (TOP-DOWN SCROLLING)
+     * NỀN ROUND 2/3: PHÓNG LỚN & CUỘN VÔ TẬN KHÔNG VIỀN (SEAMLESS SCROLLING BACKDROP)
      */
     applyRoundBackdrop() {
-        if (this.landscapeBackground) return;
         if (!this.textures.exists('background2')) return;
         const { width, height } = this.scale;
 
-        if (!this.bgTile) {
-            this.bgTile = this.add.tileSprite(width / 2, height / 2, width, height, 'background2')
-                .setDepth(-1)
-                .setAlpha(0);
-            // Hiệu ứng fade-in nền mới khi vào round
-            this.tweens.add({ targets: this.bgTile, alpha: 1, duration: 1500 });
-        } else {
-            this.bgTile.setSize(width, height).setPosition(width / 2, height / 2);
+        // Nếu đã khởi tạo rồi thì chỉ cần cập nhật layout
+        if (this.bgSprite1 && this.bgSprite2) {
+            this.layoutRoundBackdrop(width, height);
+            return;
         }
+
+        // Tạo 2 sprite cuộn nối tiếp đối xứng gương (Mirrored seamless loop) để triệt tiêu hoàn toàn đường viền nối
+        this.bgSprite1 = this.add.image(width / 2, height / 2, 'background2')
+            .setDepth(-10)
+            .setAlpha(0);
+
+        this.bgSprite2 = this.add.image(width / 2, height / 2, 'background2')
+            .setDepth(-10)
+            .setAlpha(0);
+
+        this.layoutRoundBackdrop(width, height);
+
+        // Hiệu ứng fade-in mượt mà khi bắt đầu Round 2/3
+        this.tweens.add({
+            targets: [this.bgSprite1, this.bgSprite2],
+            alpha: 1,
+            duration: 1200,
+            ease: 'Linear'
+        });
     }
 
-    createLandscapeBackground() {
-        if (this.round < 2) return;
-        const backgroundKey = this.isPortrait ? 'homescreen' : 'homescreen2';
-        if (!this.textures.exists(backgroundKey)) return;
-        const { width, height } = this.scale;
-        this.landscapeBackground = this.add.image(width / 2, height / 2, backgroundKey)
-            .setDepth(-2)
-            .setScrollFactor(0);
-        this.landscapeBackground.setDisplaySize(width, height);
-    }
+    layoutRoundBackdrop(width, height) {
+        if (!this.bgSprite1 || !this.bgSprite2) return;
 
-    createGameplayBackground() {
-        this.createLandscapeBackground();
+        const tex = this.textures.get('background2').getSourceImage();
+        const baseW = (tex && tex.width) ? tex.width : 720;
+        const baseH = (tex && tex.height) ? tex.height : 1280;
+
+        // Phóng lớn ảnh (scale cover + zoom 20%) để tràn ngập màn hình, chi tiết rõ nét và không bao giờ bị hở mép
+        const scale = Math.max(width / baseW, height / baseH) * 1.2;
+        const scaledW = baseW * scale;
+        const scaledH = baseH * scale;
+
+        this.bgScaledW = scaledW;
+        this.bgScaledH = scaledH;
+
+        this.bgSprite1.setScale(scale);
+        this.bgSprite2.setScale(scale);
+
+        if (this.isPortrait) {
+            // Màn hình dọc: Phi thuyền bay hướng lên → Nền cuộn từ trên xuống
+            this.bgSprite1.setFlipX(false).setFlipY(false);
+            this.bgSprite2.setFlipX(false).setFlipY(true); // Lật gương trục Y để mép tiếp giáp 100% liền mạch không tì vết
+
+            this.bgSprite1.setPosition(width / 2, height / 2);
+            this.bgSprite2.setPosition(width / 2, height / 2 - scaledH);
+        } else {
+            // Màn hình ngang: Phi thuyền bay sang phải → Nền cuộn từ phải sang trái
+            this.bgSprite1.setFlipX(false).setFlipY(false);
+            this.bgSprite2.setFlipX(true).setFlipY(false); // Lật gương trục X để mép tiếp giáp 100% liền mạch không tì vết
+
+            this.bgSprite1.setPosition(width / 2, height / 2);
+            this.bgSprite2.setPosition(width / 2 + scaledW, height / 2);
+        }
     }
 
     /**
@@ -333,14 +376,24 @@ class GameScene extends Phaser.Scene {
         }).setDepth(5);
 
         this.sparkEmitter = this.add.particles(0, 0, 'particle_spark', {
-            speed: { min: 60, max: 280 },
+            speed: { min: 80, max: 320 },
+            scale: { start: 0.9, end: 0 },
+            alpha: { start: 1, end: 0 },
+            tint: [0xff3300, 0xffaa00, 0xffffff],
+            blendMode: 'ADD',
+            lifespan: 380,
+            emitting: false
+        }).setDepth(21);
+
+        // 2.5 Emitter Tia sáng ngôi sao va chạm đạn (Impact Hit Flare)
+        this.hitFlareEmitter = this.add.particles(0, 0, 'particle_hit_flare', {
+            speed: { min: 20, max: 90 },
             scale: { start: 0.85, end: 0 },
             alpha: { start: 1, end: 0 },
-            tint: [0xff4400, 0xffcc00, 0xffffff],
             blendMode: 'ADD',
-            lifespan: 450,
+            lifespan: 160,
             emitting: false
-        }).setDepth(20);
+        }).setDepth(22);
 
         // Hạt Lửa phát nổ (Fire burst emitter)
         this.fireEmitter = this.add.particles(0, 0, 'particle_fire', {
@@ -360,6 +413,38 @@ class GameScene extends Phaser.Scene {
             lifespan: 600,
             emitting: false
         }).setDepth(16);
+
+        // KHÓI ĐEN DÀY ĐẶC BỐC CHÁY KHI HP <= 1/3 (Black Smoke Emitter)
+        this.blackSmokeEmitter = this.add.particles(0, 0, 'particle_smoke', {
+            speed: { min: 25, max: 80 },
+            angle: this.isPortrait ? { min: 70, max: 110 } : { min: 160, max: 200 },
+            scale: { start: 0.7, end: 1.8 },
+            alpha: { start: 0.9, end: 0 },
+            tint: 0x111111,
+            lifespan: 750,
+            emitting: false
+        }).setDepth(19);
+
+        // LỬA BỐC CHÁY HỎA HOẠN KHI HP <= 1/3 (Damage Fire Plume)
+        this.damageFireEmitter = this.add.particles(0, 0, 'particle_fire', {
+            speed: { min: 30, max: 95 },
+            scale: { start: 0.8, end: 0 },
+            alpha: { start: 1, end: 0 },
+            blendMode: 'ADD',
+            lifespan: 320,
+            emitting: false
+        }).setDepth(20);
+
+        // HẠT HỒI MÁU XANH NGỌC BOSS GREEN (Healing Sparkles)
+        this.greenHealEmitter = this.add.particles(0, 0, 'particle_glow', {
+            speed: { min: 30, max: 100 },
+            scale: { start: 0.75, end: 0 },
+            alpha: { start: 0.95, end: 0 },
+            tint: [0x00ff88, 0x55ffaa, 0xffffff],
+            blendMode: 'ADD',
+            lifespan: 450,
+            emitting: false
+        }).setDepth(22);
     }
 
     createPlayer(x, y) {
@@ -680,54 +765,55 @@ class GameScene extends Phaser.Scene {
     }
 
     /**
-     * TRÙM KHỔNG LỒ (BOSS BATTLE)
-     * Tăng độ khó xả đạn: 5-way spread, homing sniper blast, và bão đạn xoắn ốc khi máu < 50%
+     * TRÙM KHỔNG LỒ (BOSS BATTLE THEO TỪNG ROUND)
+     * - Round 1: Titan Warship (5-Way Arc Spread, Aimed Burst, 8-way rage storm)
+     * - Round 2: DUO BOSS: Tử Thần Đỏ (Red Attacker) + Cyber Medic (Green Healer 3s buff 10% max HP)
+     * - Round 3: Omega Annihilator (16-way starburst, quad precision hyper laser, meteor storm)
      */
     spawnBoss() {
         this.bossActive = true;
         window.soundFX.playMusic('sound/bossfight.mp3', 0.55);
+
+        const currentRound = Number(this.round) || 1;
+        if (currentRound === 2) {
+            this.spawnDuoBossRound2();
+        } else if (currentRound >= 3) {
+            this.spawnBossRound3();
+        } else {
+            this.spawnBossRound1();
+        }
+    }
+
+    /** ROUND 1: TITAN WARSHIP */
+    spawnBossRound1() {
         const { width, height } = this.scale;
-        this.events.emit('bossSpawned');
+        this.events.emit('bossSpawned', { name: '⚠️ TITAN WARSHIP BOSS ⚠️' });
 
         const bossSpriteKey = this.getBossSpriteKey();
         const bossSize = this.isPortrait ? 220 : 250;
 
-        let startX, startY, targetX, targetY;
-        if (this.isPortrait) {
-            startX = width / 2;
-            startY = -180;
-            targetX = width / 2;
-            targetY = 150;
-        } else {
-            startX = width + 180;
-            startY = height / 2;
-            targetX = width - 170;
-            targetY = height / 2;
-        }
+        let startX = this.isPortrait ? width / 2 : width + 180;
+        let startY = this.isPortrait ? -180 : height / 2;
+        let targetX = this.isPortrait ? width / 2 : width - 170;
+        let targetY = this.isPortrait ? 150 : height / 2;
 
         const boss = this.enemies.create(startX, startY, bossSpriteKey);
         if (!boss) return;
 
         boss.setDisplaySize(bossSize, bossSize);
-        if (this.isPortrait) {
-            boss.setFlipY(true);
-        } else {
-            boss.setFlipX(true);
-        }
+        if (this.isPortrait) boss.setFlipY(true);
+        else boss.setFlipX(true);
         boss.setDepth(12);
         boss.isBoss = true;
+        // Khóa chuyển động vật lý để không bị giật/biến mất do xung đột Physics Body
+        boss.body.immovable = true;
+        boss.body.moves = false;
 
-        // CHỈ SỐ BOSS THEO ROUND: càng về sau càng trâu
-        const bossStats = this.round === 1
-            ? { hp: 7200, shield: 3000, score: 12000 }
-            : this.round === 2
-                ? { hp: 8500, shield: 3400, score: 16000 }
-                : { hp: 10000, shield: 3800, score: 22000 };
-        boss.maxHp = bossStats.hp;
-        boss.hp = bossStats.hp;
-        boss.maxShield = bossStats.shield;
-        boss.shield = bossStats.shield;
-        boss.scoreValue = bossStats.score;
+        boss.maxHp = 7200;
+        boss.hp = 7200;
+        boss.maxShield = 3000;
+        boss.shield = 3000;
+        boss.scoreValue = 12000;
         boss.attackStep = 0;
 
         this.boss = boss;
@@ -736,31 +822,28 @@ class GameScene extends Phaser.Scene {
             targets: boss,
             x: targetX,
             y: targetY,
-            duration: 3200,
+            duration: 2800,
             ease: 'Cubic.easeOut',
             onComplete: () => {
-                // Vòng lặp tấn công dồn dập
+                if (!boss || !boss.active) return;
                 this.bossAttackTimer = this.time.addEvent({
-                    delay: 800,
-                    callback: this.bossAttackPattern,
+                    delay: 850,
+                    callback: this.bossAttackPatternRound1,
                     callbackScope: this,
                     loop: true
                 });
 
-                // CƠ CHẾ DI CHUYỂN QUA LẠI / UỐN LƯỢN UY UYỂN CHO BOSS (STRAFING MOVEMENT)
                 if (this.isPortrait) {
-                    // Màn hình dọc: Boss lượn qua lại từ trái sang phải
                     this.tweens.add({
                         targets: boss,
                         x: { from: width * 0.22, to: width * 0.78 },
-                        y: { from: 130, to: 180 },
+                        y: { from: 130, to: 175 },
                         duration: 3200,
                         yoyo: true,
                         repeat: -1,
                         ease: 'Sine.easeInOut'
                     });
                 } else {
-                    // Màn hình ngang: Boss lượn lên xuống linh hoạt ở mép phải
                     this.tweens.add({
                         targets: boss,
                         x: { from: width - 150, to: width - 200 },
@@ -775,15 +858,297 @@ class GameScene extends Phaser.Scene {
         });
     }
 
-    bossAttackPattern() {
+    /** ROUND 2: DUO BOSS (1 ĐỎ TẤN CÔNG + 1 XANH BUFF 10% MÁU MỖI 3S) */
+    spawnDuoBossRound2() {
+        const { width, height } = this.scale;
+        this.events.emit('bossSpawned', { name: '⚠️ DUO BOSS: TỬ THẦN ĐỎ & CYBER MEDIC 💚 ⚠️' });
+
+        const bossSpriteKey = this.getBossSpriteKey();
+        const sizeRed = this.isPortrait ? 220 : 250;
+        const sizeGreen = this.isPortrait ? 180 : 200;
+
+        // 1. TỬ THẦN ĐỎ (RED DESTROYER BOSS) - Bên Trái
+        let redStartX = this.isPortrait ? width * 0.28 : width + 180;
+        let redStartY = this.isPortrait ? -180 : height * 0.28;
+        let redTargetX = this.isPortrait ? width * 0.28 : width - 170;
+        let redTargetY = this.isPortrait ? 150 : height * 0.28;
+
+        const bossRed = this.enemies.create(redStartX, redStartY, bossSpriteKey);
+        if (!bossRed) return;
+        bossRed.setDisplaySize(sizeRed, sizeRed);
+        if (this.isPortrait) bossRed.setFlipY(true);
+        else bossRed.setFlipX(true);
+        bossRed.setDepth(12);
+        bossRed.isBoss = true;
+        bossRed.isBossRed = true;
+        bossRed.body.immovable = true;
+        bossRed.body.moves = false;
+        bossRed.setTint(0xff2244);
+
+        bossRed.maxHp = 6800;
+        bossRed.hp = 6800;
+        bossRed.maxShield = 2200;
+        bossRed.shield = 2200;
+        bossRed.scoreValue = 10000;
+        bossRed.attackStep = 0;
+        this.bossRed = bossRed;
+        this.boss = bossRed; // fallback reference
+
+        // 2. CYBER MEDIC (GREEN HEALER BOSS) - Bên Phải
+        let grnStartX = this.isPortrait ? width * 0.72 : width + 180;
+        let grnStartY = this.isPortrait ? -180 : height * 0.72;
+        let grnTargetX = this.isPortrait ? width * 0.72 : width - 170;
+        let grnTargetY = this.isPortrait ? 140 : height * 0.72;
+
+        const bossGreen = this.enemies.create(grnStartX, grnStartY, bossSpriteKey);
+        if (!bossGreen) return;
+        bossGreen.setDisplaySize(sizeGreen, sizeGreen);
+        if (this.isPortrait) bossGreen.setFlipY(true);
+        else bossGreen.setFlipX(true);
+        bossGreen.setDepth(12);
+        bossGreen.isBoss = true;
+        bossGreen.isBossGreen = true;
+        bossGreen.body.immovable = true;
+        bossGreen.body.moves = false;
+        bossGreen.setTint(0x00ff88);
+
+        bossGreen.maxHp = 4200;
+        bossGreen.hp = 4200;
+        bossGreen.maxShield = 1400;
+        bossGreen.shield = 1400;
+        bossGreen.scoreValue = 8000;
+        bossGreen.attackStep = 0;
+        this.bossGreen = bossGreen;
+
+        // Bảng tên hiển thị trên đầu mỗi Boss
+        this.redBossTag = this.add.text(redStartX, redStartY, '👹 TỬ THẦN ĐỎ', {
+            fontFamily: 'Orbitron, sans-serif',
+            fontSize: '13px',
+            fontWeight: '900',
+            color: '#ff3366',
+            stroke: '#000000',
+            strokeThickness: 3
+        }).setOrigin(0.5).setDepth(25);
+
+        this.greenBossTag = this.add.text(grnStartX, grnStartY, '💚 CYBER MEDIC (BUFF MÁU)', {
+            fontFamily: 'Orbitron, sans-serif',
+            fontSize: '12px',
+            fontWeight: '900',
+            color: '#00ff88',
+            stroke: '#000000',
+            strokeThickness: 3
+        }).setOrigin(0.5).setDepth(25);
+
+        // 3 Quả cầu năng lượng xoay quanh Boss Xanh (Green Orbiting Orbs)
+        this.greenMedicOrbs = [];
+        for (let i = 0; i < 3; i++) {
+            const orb = this.add.image(grnStartX, grnStartY, 'bullet_boss_green_orb')
+                .setDisplaySize(26, 26)
+                .setBlendMode('ADD')
+                .setDepth(13);
+            this.greenMedicOrbs.push(orb);
+        }
+
+        // Entrance Tweens mượt mà
+        this.tweens.add({
+            targets: bossRed,
+            x: redTargetX,
+            y: redTargetY,
+            duration: 2600,
+            ease: 'Cubic.easeOut',
+            onComplete: () => {
+                if (!bossRed || !bossRed.active) return;
+                if (this.isPortrait) {
+                    this.tweens.add({
+                        targets: bossRed,
+                        x: { from: width * 0.15, to: width * 0.48 },
+                        y: { from: 130, to: 170 },
+                        duration: 2800,
+                        yoyo: true,
+                        repeat: -1,
+                        ease: 'Sine.easeInOut'
+                    });
+                } else {
+                    this.tweens.add({
+                        targets: bossRed,
+                        x: { from: width - 140, to: width - 190 },
+                        y: { from: height * 0.15, to: height * 0.48 },
+                        duration: 2800,
+                        yoyo: true,
+                        repeat: -1,
+                        ease: 'Sine.easeInOut'
+                    });
+                }
+            }
+        });
+
+        this.tweens.add({
+            targets: bossGreen,
+            x: grnTargetX,
+            y: grnTargetY,
+            duration: 2800,
+            ease: 'Cubic.easeOut',
+            onComplete: () => {
+                if (!bossGreen || !bossGreen.active) return;
+                if (this.isPortrait) {
+                    this.tweens.add({
+                        targets: bossGreen,
+                        x: { from: width * 0.52, to: width * 0.85 },
+                        y: { from: 120, to: 160 },
+                        duration: 2400,
+                        yoyo: true,
+                        repeat: -1,
+                        ease: 'Sine.easeInOut'
+                    });
+                } else {
+                    this.tweens.add({
+                        targets: bossGreen,
+                        x: { from: width - 140, to: width - 190 },
+                        y: { from: height * 0.52, to: height * 0.85 },
+                        duration: 2400,
+                        yoyo: true,
+                        repeat: -1,
+                        ease: 'Sine.easeInOut'
+                    });
+                }
+            }
+        });
+
+        // VÒNG LẶP TẤN CÔNG DUO BOSS
+        this.bossAttackTimer = this.time.addEvent({
+            delay: 750,
+            callback: this.bossAttackPatternRound2,
+            callbackScope: this,
+            loop: true
+        });
+
+        // 💚 VÒNG LẶP HỒI MÁU: BOSS XANH HỒI 10% MÁU CHO BOSS ĐỎ MỖI 3 GIÂY (3000ms)
+        this.bossHealTimer = this.time.addEvent({
+            delay: 3000,
+            callback: this.executeGreenBossHeal,
+            callbackScope: this,
+            loop: true
+        });
+    }
+
+    /** 💚 THỰC THI CHIÊU HỒI PHỤC CỦA BOSS XANH CHO BOSS ĐỎ (+10% MAX HP) */
+    executeGreenBossHeal() {
+        if (this.isGameOver) return;
+        if (!this.bossGreen || !this.bossGreen.active) return;
+        if (!this.bossRed || !this.bossRed.active) return;
+
+        const healAmount = Math.round(this.bossRed.maxHp * 0.1); // 10% Máu tối đa (+680 HP)
+        this.bossRed.hp = Math.min(this.bossRed.maxHp, this.bossRed.hp + healAmount);
+
+        // Kích hoạt tia hồi máu
+        this.isHealingActive = true;
+        this.time.delayedCall(500, () => {
+            this.isHealingActive = false;
+            if (this.healBeamGraphics) this.healBeamGraphics.clear();
+        });
+
+        // Hiệu ứng hạt ánh sáng & hào quang xanh ngọc
+        if (this.greenHealEmitter) {
+            this.greenHealEmitter.explode(16, this.bossRed.x, this.bossRed.y);
+            this.greenHealEmitter.explode(8, this.bossGreen.x, this.bossGreen.y);
+        }
+
+        // Chớp sáng xanh ngọc trên thân Boss Đỏ
+        this.bossRed.setTint(0x55ffaa);
+        this.time.delayedCall(300, () => {
+            if (this.bossRed && this.bossRed.active) {
+                this.bossRed.setTint(0xff3355);
+            }
+        });
+
+        // Chữ bay hiển thị hồi phục
+        this.showFloatingText(this.bossRed.x, this.bossRed.y - 45, `💚 +10% HP (+${healAmount})`, '#00ff88');
+        window.soundFX.playPowerup();
+    }
+
+    /** ROUND 3: BOSS TUYỆT DIỆT OMEGA */
+    spawnBossRound3() {
+        const { width, height } = this.scale;
+        this.events.emit('bossSpawned', { name: '☠️ BOSS TUYỆT DIỆT CUỐI CÙNG ☠️' });
+
+        const bossSpriteKey = this.getBossSpriteKey();
+        const bossSize = this.isPortrait ? 240 : 270;
+
+        let startX = this.isPortrait ? width / 2 : width + 180;
+        let startY = this.isPortrait ? -180 : height / 2;
+        let targetX = this.isPortrait ? width / 2 : width - 170;
+        let targetY = this.isPortrait ? 150 : height / 2;
+
+        const boss = this.enemies.create(startX, startY, bossSpriteKey);
+        if (!boss) return;
+
+        boss.setDisplaySize(bossSize, bossSize);
+        if (this.isPortrait) boss.setFlipY(true);
+        else boss.setFlipX(true);
+        boss.setDepth(12);
+        boss.isBoss = true;
+        boss.body.immovable = true;
+        boss.body.moves = false;
+        boss.setTint(0xffaa00);
+
+        boss.maxHp = 11000;
+        boss.hp = 11000;
+        boss.maxShield = 4000;
+        boss.shield = 4000;
+        boss.scoreValue = 25000;
+        boss.attackStep = 0;
+
+        this.boss = boss;
+
+        this.tweens.add({
+            targets: boss,
+            x: targetX,
+            y: targetY,
+            duration: 2800,
+            ease: 'Cubic.easeOut',
+            onComplete: () => {
+                if (!boss || !boss.active) return;
+                this.bossAttackTimer = this.time.addEvent({
+                    delay: 680,
+                    callback: this.bossAttackPatternRound3,
+                    callbackScope: this,
+                    loop: true
+                });
+
+                if (this.isPortrait) {
+                    this.tweens.add({
+                        targets: boss,
+                        x: { from: width * 0.2, to: width * 0.8 },
+                        y: { from: 130, to: 180 },
+                        duration: 2900,
+                        yoyo: true,
+                        repeat: -1,
+                        ease: 'Sine.easeInOut'
+                    });
+                } else {
+                    this.tweens.add({
+                        targets: boss,
+                        x: { from: width - 140, to: width - 210 },
+                        y: { from: height * 0.2, to: height * 0.8 },
+                        duration: 2900,
+                        yoyo: true,
+                        repeat: -1,
+                        ease: 'Sine.easeInOut'
+                    });
+                }
+            }
+        });
+    }
+
+    /** KIỂU BẮN ROUND 1: BOSS TITAN WARSHIP */
+    bossAttackPatternRound1() {
         if (!this.boss || !this.boss.active || this.isGameOver) return;
         this.boss.attackStep = (this.boss.attackStep || 0) + 1;
-        const isRage = this.boss.hp < (this.boss.maxHp * 0.5); // Giai đoạn Cuồng Nộ
-
+        const isRage = this.boss.hp < (this.boss.maxHp * 0.5);
         const baseAngle = this.isPortrait ? 90 : 180;
 
         if (this.boss.attackStep % 3 === 1) {
-            // Pattern 1: Xả đạn Plasma 5 hướng (5-Way Arc Spread)
+            // Pattern 1: Xả đạn Plasma 5 hướng
             const angles = [-40, -20, 0, 20, 40];
             angles.forEach(ang => {
                 const rad = Phaser.Math.DegToRad(baseAngle + ang);
@@ -796,7 +1161,7 @@ class GameScene extends Phaser.Scene {
             });
             window.soundFX.playEnemyLaser();
         } else if (this.boss.attackStep % 3 === 2) {
-            // Pattern 2: Bắn đạn ngắm thẳng mục tiêu người chơi (Targeted Aimed Shot)
+            // Pattern 2: Bắn đạn ngắm thẳng mục tiêu người chơi
             if (this.player && this.player.active) {
                 const angleToPlayer = Phaser.Math.Angle.Between(this.boss.x, this.boss.y, this.player.x, this.player.y);
                 [-0.15, 0, 0.15].forEach(offset => {
@@ -811,7 +1176,7 @@ class GameScene extends Phaser.Scene {
             }
             window.soundFX.playEnemyLaser();
         } else if (isRage) {
-            // Pattern 3 (Rage Bullet Hell): Bão đạn xoay 8 hướng
+            // Pattern 3: Bão đạn xoay 8 hướng
             for (let i = 0; i < 8; i++) {
                 const rad = (Math.PI * 2 / 8) * i + (this.time.now * 0.002);
                 const bullet = this.enemyBullets.create(this.boss.x, this.boss.y, 'bullet_boss_orb');
@@ -823,6 +1188,199 @@ class GameScene extends Phaser.Scene {
                 }
             }
             window.soundFX.playEnemyLaser();
+        }
+    }
+
+    /** KIỂU BẮN ROUND 2: DUO BOSS (TỬ THẦN ĐỎ & CYBER MEDIC) - HOÀN TOÀN MỚI & ĐỘ KHÓ CAO */
+    bossAttackPatternRound2() {
+        if (this.isGameOver) return;
+        const baseAngle = this.isPortrait ? 90 : 180;
+
+        // 1. TẤN CÔNG CỦA TỬ THẦN ĐỎ (RED DESTROYER)
+        if (this.bossRed && this.bossRed.active) {
+            this.bossRed.attackStep = (this.bossRed.attackStep || 0) + 1;
+            const step = this.bossRed.attackStep;
+            const isRage = this.bossRed.hp < (this.bossRed.maxHp * 0.4);
+
+            if (step % 3 === 1) {
+                // Pattern 1: TWIN HELIX SPIRAL STREAM (2 luồng đạn xoắn kép đan chéo nhau uốn lượn liên tiếp 4 đợt)
+                for (let wave = 0; wave < 4; wave++) {
+                    this.time.delayedCall(wave * 90, () => {
+                        if (!this.bossRed || !this.bossRed.active || this.isGameOver) return;
+                        const t = this.time.now * 0.005 + wave * 0.6;
+                        const spread1 = Math.sin(t) * 35;
+                        const spread2 = -Math.sin(t) * 35;
+
+                        [spread1, spread2].forEach(sp => {
+                            const rad = Phaser.Math.DegToRad(baseAngle + sp);
+                            const b = this.enemyBullets.create(this.bossRed.x, this.bossRed.y, 'bullet_boss_orb');
+                            if (b) {
+                                b.setDisplaySize(28, 28);
+                                b.setVelocity(Math.cos(rad) * 370, Math.sin(rad) * 370);
+                                b.setDepth(18);
+                                b.setBlendMode('ADD');
+                            }
+                        });
+                        window.soundFX.playEnemyLaser();
+                    });
+                }
+            } else if (step % 3 === 2) {
+                // Pattern 2: SHOTGUN NOVA SPREAD (Bắn chùm 10 tia plasma nổ tỏa rộng + 2 đạn nhắm chặn đường)
+                for (let i = 0; i < 10; i++) {
+                    const ang = -50 + (i * 11);
+                    const rad = Phaser.Math.DegToRad(baseAngle + ang);
+                    const b = this.enemyBullets.create(this.bossRed.x, this.bossRed.y, 'bullet_boss_orb');
+                    if (b) {
+                        b.setDisplaySize(26, 26);
+                        b.setVelocity(Math.cos(rad) * 340, Math.sin(rad) * 340);
+                        b.setDepth(18);
+                        b.setBlendMode('ADD');
+                    }
+                }
+                if (this.player && this.player.active) {
+                    const pAngle = Phaser.Math.Angle.Between(this.bossRed.x, this.bossRed.y, this.player.x, this.player.y);
+                    [-0.12, 0.12].forEach(off => {
+                        const b = this.enemyBullets.create(this.bossRed.x, this.bossRed.y, 'bullet_boss_orb');
+                        if (b) {
+                            b.setDisplaySize(30, 30);
+                            b.setVelocity(Math.cos(pAngle + off) * 400, Math.sin(pAngle + off) * 400);
+                            b.setDepth(18);
+                            b.setBlendMode('ADD');
+                        }
+                    });
+                }
+                window.soundFX.playEnemyLaser();
+            } else {
+                // Pattern 3: SPLIT CLUSTER PLASMA (Bắn quả cầu plasma lớn, sau 450ms tách thành 6 tia con tỏa ra)
+                if (this.player && this.player.active) {
+                    const pAngle = Phaser.Math.Angle.Between(this.bossRed.x, this.bossRed.y, this.player.x, this.player.y);
+                    const cluster = this.enemyBullets.create(this.bossRed.x, this.bossRed.y, 'bullet_boss_orb');
+                    if (cluster) {
+                        cluster.setDisplaySize(38, 38);
+                        cluster.setVelocity(Math.cos(pAngle) * 300, Math.sin(pAngle) * 300);
+                        cluster.setDepth(18);
+                        cluster.setBlendMode('ADD');
+
+                        // Phân tách sau 450ms
+                        this.time.delayedCall(450, () => {
+                            if (!cluster || !cluster.active) return;
+                            const cx = cluster.x;
+                            const cy = cluster.y;
+                            cluster.destroy();
+                            this.createHitSparks(cx, cy, true);
+                            window.soundFX.playLaser(0.5);
+
+                            for (let k = 0; k < 6; k++) {
+                                const splitRad = (Math.PI * 2 / 6) * k;
+                                const subB = this.enemyBullets.create(cx, cy, 'bullet_boss_orb');
+                                if (subB) {
+                                    subB.setDisplaySize(22, 22);
+                                    subB.setVelocity(Math.cos(splitRad) * 280, Math.sin(splitRad) * 280);
+                                    subB.setDepth(18);
+                                    subB.setBlendMode('ADD');
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+
+            // Giai đoạn Cuồng Nộ: Xả thêm đạn xoay
+            if (isRage) {
+                for (let j = 0; j < 4; j++) {
+                    const r = (Math.PI * 2 / 4) * j + (this.time.now * 0.003);
+                    const rb = this.enemyBullets.create(this.bossRed.x, this.bossRed.y, 'bullet_boss_orb');
+                    if (rb) {
+                        rb.setDisplaySize(24, 24);
+                        rb.setVelocity(Math.cos(r) * 290, Math.sin(r) * 290);
+                        rb.setDepth(18);
+                        rb.setBlendMode('ADD');
+                    }
+                }
+            }
+        }
+
+        // 2. TẤN CÔNG HỖ TRỢ CỦA CYBER MEDIC (GREEN HEALER BOSS)
+        if (this.bossGreen && this.bossGreen.active) {
+            this.bossGreen.attackStep = (this.bossGreen.attackStep || 0) + 1;
+            const gStep = this.bossGreen.attackStep;
+
+            if (gStep % 2 === 1 && this.player && this.player.active) {
+                // Bắn 3 tia ngắm nhắm người chơi
+                const gAngle = Phaser.Math.Angle.Between(this.bossGreen.x, this.bossGreen.y, this.player.x, this.player.y);
+                [-0.15, 0, 0.15].forEach(off => {
+                    const gb = this.enemyBullets.create(this.bossGreen.x, this.bossGreen.y, 'bullet_boss_green_orb');
+                    if (gb) {
+                        gb.setDisplaySize(24, 24);
+                        gb.setVelocity(Math.cos(gAngle + off) * 380, Math.sin(gAngle + off) * 380);
+                        gb.setDepth(18);
+                        gb.setBlendMode('ADD');
+                    }
+                });
+                window.soundFX.playEnemyLaser();
+            } else {
+                // Vòng năng lượng bảo vệ 6 tia
+                for (let k = 0; k < 6; k++) {
+                    const rad = (Math.PI * 2 / 6) * k + (this.time.now * 0.0015);
+                    const gb = this.enemyBullets.create(this.bossGreen.x, this.bossGreen.y, 'bullet_boss_green_orb');
+                    if (gb) {
+                        gb.setDisplaySize(22, 22);
+                        gb.setVelocity(Math.cos(rad) * 240, Math.sin(rad) * 240);
+                        gb.setDepth(18);
+                        gb.setBlendMode('ADD');
+                    }
+                }
+            }
+        }
+    }
+
+    /** KIỂU BẮN ROUND 3: BOSS TUYỆT DIỆT OMEGA */
+    bossAttackPatternRound3() {
+        if (!this.boss || !this.boss.active || this.isGameOver) return;
+        this.boss.attackStep = (this.boss.attackStep || 0) + 1;
+        const step = this.boss.attackStep;
+
+        if (step % 3 === 1) {
+            // Starburst 12 hướng xoay tròn
+            for (let i = 0; i < 12; i++) {
+                const rad = (Math.PI * 2 / 12) * i + (this.time.now * 0.0025);
+                const b = this.enemyBullets.create(this.boss.x, this.boss.y, 'bullet_boss_orb');
+                if (b) {
+                    b.setDisplaySize(28, 28);
+                    b.setVelocity(Math.cos(rad) * 300, Math.sin(rad) * 300);
+                    b.setDepth(18);
+                    b.setBlendMode('ADD');
+                }
+            }
+            window.soundFX.playEnemyLaser();
+        } else if (step % 3 === 2 && this.player && this.player.active) {
+            // Quad hyper precision sniper burst
+            const pAngle = Phaser.Math.Angle.Between(this.boss.x, this.boss.y, this.player.x, this.player.y);
+            [-0.2, -0.07, 0.07, 0.2].forEach(off => {
+                const b = this.enemyBullets.create(this.boss.x, this.boss.y, 'bullet_boss_orb');
+                if (b) {
+                    b.setDisplaySize(30, 30);
+                    b.setVelocity(Math.cos(pAngle + off) * 420, Math.sin(pAngle + off) * 420);
+                    b.setDepth(18);
+                    b.setBlendMode('ADD');
+                }
+            });
+            window.soundFX.playEnemyLaser();
+        } else {
+            // Sóng đạn chùm kèm mưa thiên thạch hỗ trợ
+            if (this.meteors && this.meteors.countActive(true) < 8) {
+                this.spawnMeteor();
+            }
+            for (let i = 0; i < 8; i++) {
+                const rad = (Math.PI * 2 / 8) * i;
+                const b = this.enemyBullets.create(this.boss.x, this.boss.y, 'bullet_boss_orb');
+                if (b) {
+                    b.setDisplaySize(26, 26);
+                    b.setVelocity(Math.cos(rad) * 320, Math.sin(rad) * 320);
+                    b.setDepth(18);
+                    b.setBlendMode('ADD');
+                }
+            }
         }
     }
 
@@ -1171,7 +1729,35 @@ class GameScene extends Phaser.Scene {
         const y = enemy.y;
 
         if (isBoss) {
-            // HIỆU ỨNG BOSS HẾT MÁU: CHUỖI NỔ LIÊN HOÀN + RUNG MÀN HÌNH CỰC ĐẠI + VĂNG MẢNH HOÀNH TRÁNG
+            if (this.round === 2) {
+                if (enemy === this.bossGreen || enemy.isBossGreen) {
+                    this.bossGreen = null;
+                    if (this.bossHealTimer) {
+                        this.bossHealTimer.remove();
+                        this.bossHealTimer = null;
+                    }
+                    this.triggerSingleBossDestruction(enemy);
+                    this.events.emit('showBanner', '💚 ĐÃ TIÊU DIỆT BOSS HỒI MÁU! HÃY HẠ GỤC TỬ THẦN ĐỎ!');
+                    if (this.bossRed && this.bossRed.active) {
+                        this.bossRed.setTint(0xff0000);
+                        this.showFloatingText(this.bossRed.x, this.bossRed.y - 45, '🔥 TỬ THẦN ĐỎ CUỒNG NỘ!', '#ff0033');
+                    }
+                    if (!this.bossRed || !this.bossRed.active) {
+                        this.onDuoBossFullyDefeated();
+                    }
+                    return;
+                } else if (enemy === this.bossRed || enemy.isBossRed) {
+                    this.bossRed = null;
+                    this.triggerSingleBossDestruction(enemy);
+                    this.events.emit('showBanner', '💥 ĐÃ TIÊU DIỆT TỬ THẦN ĐỎ!');
+                    if (!this.bossGreen || !this.bossGreen.active) {
+                        this.onDuoBossFullyDefeated();
+                    }
+                    return;
+                }
+            }
+
+            // Round 1 / Round 3 Boss hủy diệt toàn cục
             this.triggerBossEpicDestruction(enemy);
             return;
         }
@@ -1295,12 +1881,11 @@ class GameScene extends Phaser.Scene {
         drone.fireMode = capturedEnemy
             ? capturedEnemy.fireMode
             : capturedBase === 'enemy3' ? 'fireball' : capturedBase === 'enemy2' ? 'aimed' : 'straight';
-        // ĐỒNG MINH CÓ MÁU YẾU (có thể bị hạ gục bởi đạn địch)
         drone.maxHp = 30;
         drone.hp = 30;
 
         if (this.isPortrait) {
-            drone.setFlipY(false); // Bay cùng hướng với người chơi
+            drone.setFlipY(false);
         } else {
             drone.setFlipX(false);
         }
@@ -1308,7 +1893,6 @@ class GameScene extends Phaser.Scene {
         this.events.emit('showBanner', '🛸 ĐÃ THU PHỤC PHI THUYỀN MINI LÀM ĐỒNG MINH!');
         this.showFloatingText(this.player.x, this.player.y - 40, '🛸 +1 ĐỒNG MINH MINI!', '#00ff88');
 
-        // Hiệu ứng hào quang lá chắn đồng minh
         this.tweens.add({
             targets: drone,
             alpha: { from: 0.7, to: 1 },
@@ -1319,11 +1903,51 @@ class GameScene extends Phaser.Scene {
     }
 
     /**
+     * HỦY DIỆT 1 TRONG 2 CON BOSS CỦA DUO BOSS (ROUND 2)
+     */
+    triggerSingleBossDestruction(boss) {
+        window.soundFX.playBossDefeat();
+        const x = boss.x;
+        const y = boss.y;
+        this.cameras.main.shake(280, 0.014);
+
+        for (let i = 0; i < 3; i++) {
+            this.time.delayedCall(i * 140, () => {
+                const exX = x + Phaser.Math.Between(-35, 35);
+                const exY = y + Phaser.Math.Between(-35, 35);
+                this.createExplosion(exX, exY, false);
+            });
+        }
+
+        this.time.delayedCall(500, () => {
+            this.createExplosion(x, y, true);
+            this.addScore(boss.scoreValue);
+            this.killCount++;
+            boss.destroy();
+        });
+    }
+
+    onDuoBossFullyDefeated() {
+        this.bossActive = false;
+        if (this.bossAttackTimer) this.bossAttackTimer.remove();
+        if (this.bossHealTimer) this.bossHealTimer.remove();
+        if (this.healBeamGraphics) this.healBeamGraphics.clear();
+        this.events.emit('bossDefeated');
+        this.events.emit('showBanner', '🏆 CHIẾN THẮNG: ĐÃ HỦY DIỆT HOÀN TOÀN DUO BOSS!');
+
+        this.time.delayedCall(1400, () => {
+            this.advanceToRound(3);
+        });
+    }
+
+    /**
      * HIỆU ỨNG BOSS BỊ TIÊU DIỆT (ĐÃ TỐI ƯU MƯỢT MÀ 60 FPS, KHÔNG GIẬT LAG)
      */
     triggerBossEpicDestruction(boss) {
         this.bossActive = false;
         if (this.bossAttackTimer) this.bossAttackTimer.remove();
+        if (this.bossHealTimer) this.bossHealTimer.remove();
+        if (this.healBeamGraphics) this.healBeamGraphics.clear();
         this.events.emit('bossDefeated');
         window.soundFX.playBossDefeat();
 
@@ -1382,6 +2006,12 @@ class GameScene extends Phaser.Scene {
         this.wave = 1;
         this.bossDefeatedOnce = false;
         this.boss = null;
+        this.bossRed = null;
+        this.bossGreen = null;
+        this.isHealingActive = false;
+        if (this.bossAttackTimer) this.bossAttackTimer.remove();
+        if (this.bossHealTimer) this.bossHealTimer.remove();
+        if (this.healBeamGraphics) this.healBeamGraphics.clear();
 
         // Xóa toàn bộ đạn địch còn sót trên màn hình
         this.enemyBullets.getChildren().slice().forEach(b => b.destroy());
@@ -2068,20 +2698,27 @@ class GameScene extends Phaser.Scene {
      * CẢNH BÁO WARNING KHI BOSS SẮP XUẤT HIỆN
      */
     triggerBossWarning() {
+        // Dừng vòng lặp spawn wave ngay lập tức
+        if (this.spawnEnemyTimer) {
+            this.spawnEnemyTimer.remove();
+            this.spawnEnemyTimer = null;
+        }
+        this.bossActive = true;
+
         window.soundFX.playBossAlarm();
         this.cameras.main.flash(350, 255, 0, 0);
 
         // Tên Boss theo từng Round
         const bossName = this.round === 1 ? 'TRÙM KHỔNG LỒ'
-            : this.round === 2 ? 'BOSS PHANTOM 2A'
+            : this.round === 2 ? 'DUO BOSS: TỬ THẦN ĐỎ & CYBER MEDIC 💚'
             : 'BOSS TUYỆT DIỆT CUỐI CÙNG';
 
         this.events.emit('showBanner', `⚠️ WARNING: ${bossName} TIẾP CẬN! ⚠️`);
 
         const { width, height } = this.scale;
-        const warnText = this.add.text(width / 2, height / 2, `⚠️ WARNING! ⚠️\n${bossName} APPROACHING`, {
+        const warnText = this.add.text(width / 2, height / 2, `⚠️ WARNING! ⚠️\n${bossName}\nAPPROACHING`, {
             fontFamily: 'Orbitron, sans-serif',
-            fontSize: '30px',
+            fontSize: this.round === 2 ? '22px' : '28px',
             fontWeight: '900',
             color: '#ff0033',
             stroke: '#ffffff',
@@ -2167,8 +2804,13 @@ class GameScene extends Phaser.Scene {
         }
     }
 
-    createHitSparks(x, y) {
-        this.sparkEmitter.explode(6, x, y);
+    createHitSparks(x, y, isBig = false) {
+        if (this.sparkEmitter) {
+            this.sparkEmitter.explode(isBig ? 14 : 7, x, y);
+        }
+        if (this.hitFlareEmitter) {
+            this.hitFlareEmitter.explode(isBig ? 2 : 1, x, y);
+        }
     }
 
     showFloatingText(x, y, msg, color) {
@@ -2212,12 +2854,31 @@ class GameScene extends Phaser.Scene {
             });
         });
 
-        // 1.5 Cuộn NỀN TOP-DOWN (Round 2/3): mô phỏng đang bay nhìn từ trên xuống
-        if (this.bgTile) {
+        // 1.5 Cuộn NỀN ROUND 2/3: Chạy từ từ mượt mà tạo cảm giác phi thuyền đang bay lướt
+        if (this.bgSprite1 && this.bgSprite2 && this.bgScaledW && this.bgScaledH) {
+            const scrollSpeed = delta * 0.045; // Tốc độ trôi êm ái, hùng tráng (~45px/giây)
             if (this.isPortrait) {
-                this.bgTile.tilePositionY += delta * 0.06;
+                this.bgSprite1.y += scrollSpeed;
+                this.bgSprite2.y += scrollSpeed;
+
+                const limitY = height + this.bgScaledH / 2;
+                if (this.bgSprite1.y >= limitY) {
+                    this.bgSprite1.y = this.bgSprite2.y - this.bgScaledH + 1;
+                }
+                if (this.bgSprite2.y >= limitY) {
+                    this.bgSprite2.y = this.bgSprite1.y - this.bgScaledH + 1;
+                }
             } else {
-                this.bgTile.tilePositionX -= delta * 0.06;
+                this.bgSprite1.x -= scrollSpeed;
+                this.bgSprite2.x -= scrollSpeed;
+
+                const limitX = -this.bgScaledW / 2;
+                if (this.bgSprite1.x <= limitX) {
+                    this.bgSprite1.x = this.bgSprite2.x + this.bgScaledW - 1;
+                }
+                if (this.bgSprite2.x <= limitX) {
+                    this.bgSprite2.x = this.bgSprite1.x + this.bgScaledW - 1;
+                }
             }
         }
 
@@ -2228,6 +2889,62 @@ class GameScene extends Phaser.Scene {
                     this.fireEmitter.explode(1, m.x, m.y);
                 }
             });
+        }
+
+        // 1.7 HIỆU ỨNG KHÓI ĐEN & LỬA BỐC CHÁY KHI NGƯỜI CHƠI HOẶC BOSS CÒN <= 1/3 MÁU
+        // A. Người chơi bị hư hại nặng (HP <= 1/3, tức là hp <= 1)
+        if (this.player && this.player.active && this.player.hp <= 1) {
+            if (this.blackSmokeEmitter && Math.random() < 0.55) {
+                const offX = Phaser.Math.Between(-8, 8);
+                const offY = this.isPortrait ? Phaser.Math.Between(10, 20) : Phaser.Math.Between(-8, 8);
+                this.blackSmokeEmitter.explode(1, this.player.x + offX, this.player.y + offY);
+            }
+            if (this.damageFireEmitter && Math.random() < 0.35) {
+                this.damageFireEmitter.explode(1, this.player.x, this.player.y);
+                this.sparkEmitter.explode(1, this.player.x, this.player.y);
+            }
+        }
+
+        // B. Boss bị hư hại nặng (HP <= 1/3 Máu Tối Đa)
+        const checkBossLowHpSmoke = (b) => {
+            if (!b || !b.active || b.hp > (b.maxHp / 3)) return;
+            if (this.blackSmokeEmitter && Math.random() < 0.65) {
+                const offX = Phaser.Math.Between(-50, 50);
+                const offY = Phaser.Math.Between(-35, 35);
+                this.blackSmokeEmitter.explode(1, b.x + offX, b.y + offY);
+            }
+            if (this.damageFireEmitter && Math.random() < 0.4) {
+                const offX = Phaser.Math.Between(-40, 40);
+                const offY = Phaser.Math.Between(-25, 25);
+                this.damageFireEmitter.explode(1, b.x + offX, b.y + offY);
+                this.sparkEmitter.explode(2, b.x + offX, b.y + offY);
+            }
+        };
+
+        if (this.boss && this.boss.active) checkBossLowHpSmoke(this.boss);
+        if (this.bossRed && this.bossRed.active) checkBossLowHpSmoke(this.bossRed);
+        if (this.bossGreen && this.bossGreen.active) checkBossLowHpSmoke(this.bossGreen);
+
+        // 1.8 Cập nhật tia sáng hồi máu (Green Heal Beam) giữa Boss Green và Boss Red
+        if (this.healBeamGraphics) {
+            this.healBeamGraphics.clear();
+            if (this.isHealingActive && this.bossGreen && this.bossGreen.active && this.bossRed && this.bossRed.active) {
+                const gx = this.bossGreen.x;
+                const gy = this.bossGreen.y;
+                const rx = this.bossRed.x;
+                const ry = this.bossRed.y;
+
+                // Tia sáng xanh ngọc neon
+                this.healBeamGraphics.lineStyle(4, 0x00ff88, 0.9);
+                this.healBeamGraphics.beginPath();
+                this.healBeamGraphics.moveTo(gx, gy);
+                this.healBeamGraphics.lineTo(rx, ry);
+                this.healBeamGraphics.strokePath();
+
+                // Lõi sáng trắng
+                this.healBeamGraphics.lineStyle(1.8, 0xffffff, 1);
+                this.healBeamGraphics.strokePath();
+            }
         }
 
         // 2. Cuộn & Xoay Các Hành Tinh Trôi Dạt
@@ -2536,6 +3253,23 @@ class GameScene extends Phaser.Scene {
         });
 
         // 10. Gửi dữ liệu cập nhật HUD sang UIScene
+        let curBossHp, maxBossHp, curBossShield, maxBossShield;
+        if (this.round === 2 && (this.bossRed || this.bossGreen)) {
+            const rActive = this.bossRed && this.bossRed.active;
+            const gActive = this.bossGreen && this.bossGreen.active;
+            if (rActive || gActive) {
+                curBossHp = (rActive ? this.bossRed.hp : 0) + (gActive ? this.bossGreen.hp : 0);
+                maxBossHp = (this.bossRed ? this.bossRed.maxHp : 0) + (this.bossGreen ? this.bossGreen.maxHp : 0);
+                curBossShield = (rActive ? this.bossRed.shield : 0) + (gActive ? this.bossGreen.shield : 0);
+                maxBossShield = (this.bossRed ? this.bossRed.maxShield : 0) + (this.bossGreen ? this.bossGreen.maxShield : 0);
+            }
+        } else if (this.boss && this.boss.active) {
+            curBossHp = this.boss.hp;
+            maxBossHp = this.boss.maxHp;
+            curBossShield = this.boss.shield;
+            maxBossShield = this.boss.maxShield;
+        }
+
         this.events.emit('updateHUD', {
             score: this.score,
             rescued: this.rescuedCount,
@@ -2545,10 +3279,10 @@ class GameScene extends Phaser.Scene {
             shield: this.player ? this.player.shield : 0,
             maxShield: this.player ? this.player.maxShield : 0,
             ultimateEnergy: this.player ? this.player.ultimateEnergy : 0,
-            bossHp: this.boss && this.boss.active ? this.boss.hp : undefined,
-            bossMaxHp: this.boss && this.boss.active ? this.boss.maxHp : undefined,
-            bossShield: this.boss && this.boss.active ? this.boss.shield : undefined,
-            bossMaxShield: this.boss && this.boss.active ? this.boss.maxShield : undefined
+            bossHp: curBossHp,
+            bossMaxHp: maxBossHp,
+            bossShield: curBossShield,
+            bossMaxShield: maxBossShield
         });
     }
 
@@ -2557,25 +3291,16 @@ class GameScene extends Phaser.Scene {
         this.physics.world.setBounds(0, 0, width, height);
         const newIsPortrait = height >= width;
 
-        // Cập nhật kích thước nền Top-Down (Round 2/3)
-        if (this.bgTile) {
-            this.bgTile.setSize(width, height).setPosition(width / 2, height / 2);
-        }
-        if (this.landscapeBackground) {
-            this.landscapeBackground.setPosition(width / 2, height / 2).setDisplaySize(width, height);
+        // Cập nhật kích thước nền Round 2/3
+        if (this.bgSprite1 && this.bgSprite2) {
+            this.layoutRoundBackdrop(width, height);
         }
 
         if (newIsPortrait !== this.isPortrait) {
             this.isPortrait = newIsPortrait;
-            if (this.round < 2 && this.landscapeBackground) {
-                this.landscapeBackground.destroy();
-                this.landscapeBackground = null;
+            if (this.round >= 2) {
+                this.applyRoundBackdrop();
             }
-            if (this.landscapeBackground) {
-                this.landscapeBackground.destroy();
-                this.landscapeBackground = null;
-            }
-            this.createGameplayBackground();
             if (this.player && this.player.active) {
                 const newKey = this.getPlayerSpriteKey();
                 if (newKey && this.textures.exists(newKey)) {

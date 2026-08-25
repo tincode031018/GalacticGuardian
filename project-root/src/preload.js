@@ -481,6 +481,18 @@ class PreloadScene extends Phaser.Scene {
         ctxBO.fillRect(0, 0, 36, 36);
         bossOrb.refresh();
 
+        // 5.5 Đạn Cầu Năng Lượng Boss Xanh Lá (Green Healer Boss Orb)
+        const bossGreenOrb = this.textures.createCanvas('bullet_boss_green_orb', 32, 32);
+        const ctxBGO = bossGreenOrb.context;
+        const gradBGO = ctxBGO.createRadialGradient(16, 16, 3, 16, 16, 16);
+        gradBGO.addColorStop(0, '#ffffff');
+        gradBGO.addColorStop(0.3, '#00ff88');
+        gradBGO.addColorStop(0.8, '#00aa55');
+        gradBGO.addColorStop(1, 'rgba(0, 255, 136, 0)');
+        ctxBGO.fillStyle = gradBGO;
+        ctxBGO.fillRect(0, 0, 32, 32);
+        bossGreenOrb.refresh();
+
         // 6. TIA LAZER KHỔNG LỒ XANH DƯƠNG (GIANT BLUE LASER BEAM - DỌC & NGANG)
         const beamV = this.textures.createCanvas('laser_giant_blue_v', 64, 600);
         const ctxBV = beamV.context;
@@ -623,6 +635,22 @@ class PreloadScene extends Phaser.Scene {
         ctxSpark.fillStyle = gradSpark;
         ctxSpark.fillRect(0, 0, 16, 16);
         sparkCanvas.refresh();
+
+        // 2.5 Hit Flare (Tia sáng ngôi sao va chạm đạn)
+        const flareCanvas = this.textures.createCanvas('particle_hit_flare', 24, 24);
+        const ctxFlare = flareCanvas.context;
+        const gradFlare = ctxFlare.createRadialGradient(12, 12, 1, 12, 12, 12);
+        gradFlare.addColorStop(0, '#ffffff');
+        gradFlare.addColorStop(0.3, 'rgba(255, 230, 100, 0.9)');
+        gradFlare.addColorStop(0.7, 'rgba(255, 100, 0, 0.4)');
+        gradFlare.addColorStop(1, 'rgba(255, 0, 0, 0)');
+        ctxFlare.fillStyle = gradFlare;
+        ctxFlare.fillRect(0, 0, 24, 24);
+        // Star cross
+        ctxFlare.fillStyle = '#ffffff';
+        ctxFlare.fillRect(10, 2, 4, 20);
+        ctxFlare.fillRect(2, 10, 20, 4);
+        flareCanvas.refresh();
 
         // 3. Shockwave ring
         const shockCanvas = this.textures.createCanvas('particle_shockwave', 64, 64);

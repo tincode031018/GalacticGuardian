@@ -340,10 +340,13 @@ class UIScene extends Phaser.Scene {
         }
     }
 
-    showBossBar() {
+    showBossBar(data) {
         this.bossBarContainer.setVisible(true);
+        if (data && data.name && this.bossNameText) {
+            this.bossNameText.setText(data.name);
+        }
         window.soundFX.playBossAlarm();
-        this.showNotification('⚠️ CẢNH BÁO: TRÙM KHÔNG GIAN XUẤT HIỆN! ⚠️');
+        this.showNotification(data && data.name ? `${data.name} XUẤT HIỆN!` : '⚠️ CẢNH BÁO: TRÙM KHÔNG GIAN XUẤT HIỆN! ⚠️');
     }
 
     hideBossBar() {
