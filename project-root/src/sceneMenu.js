@@ -8,17 +8,20 @@ class MenuScene extends Phaser.Scene {
     constructor() {
         super({ key: 'MenuScene' });
         this.selectedShipBase = 'player1';
+        this.selectedRound = 1;
     }
 
     create() {
         const { width, height } = this.scale;
         document.body.classList.remove('game-active');
         this.menuElements = [];
-        const hasHomeBackground = this.textures.exists('homescreen');
+        const isPortrait = height >= width;
+        const homeKey = isPortrait ? 'homescreen' : 'homescreen2';
+        const hasHomeBackground = this.textures.exists(homeKey);
         this.hasHomeBackground = hasHomeBackground;
 
         if (hasHomeBackground) {
-            const background = this.add.image(width / 2, height / 2, 'homescreen').setDepth(-10);
+            const background = this.add.image(width / 2, height / 2, homeKey).setDepth(-10);
             background.setScale(Math.max(width / background.width, height / background.height));
         }
 
@@ -84,7 +87,7 @@ class MenuScene extends Phaser.Scene {
             const isPortrait = this.scale.height >= this.scale.width;
             const shipType = this.selectedShipBase + (isPortrait ? 'a' : 'b');
             document.body.classList.add('game-active');
-            this.scene.start('GameScene', { shipType: shipType });
+            this.scene.start('GameScene', { shipType: shipType, round: this.selectedRound });
         };
 
         // 6. Nút Bắt Đầu (Start Button)
@@ -277,8 +280,10 @@ class MenuScene extends Phaser.Scene {
     }
 
     createShipMenuBackground(width, height) {
-        if (this.shipMenuBackground || !this.textures.exists('menubackground')) return;
-        this.shipMenuBackground = this.add.image(width / 2, height / 2, 'menubackground').setDepth(-9);
+        if (this.shipMenuBackground) return;
+        const backgroundKey = height >= width ? 'menubackground' : 'menubackground2';
+        if (!this.textures.exists(backgroundKey)) return;
+        this.shipMenuBackground = this.add.image(width / 2, height / 2, backgroundKey).setDepth(-9);
         this.shipMenuBackground.setScale(Math.max(width / this.shipMenuBackground.width, height / this.shipMenuBackground.height));
     }
 
@@ -531,8 +536,30 @@ class MenuScene extends Phaser.Scene {
             wordWrap: { width: 190 }
         }).setOrigin(0.5);
 
+        const roundLabel = this.add.text(-120, 112, '🌍 Vòng chơi:', {
+            fontFamily: 'Rajdhani, sans-serif',
+            fontSize: '15px',
+            fontWeight: '700',
+            color: '#ffffff'
+        });
+
+        const roundBtn = this.add.text(60, 112, `VÒNG ${this.selectedRound}`, {
+            fontFamily: 'Orbitron, sans-serif',
+            fontSize: '12px',
+            fontWeight: '800',
+            color: '#ffcc00',
+            backgroundColor: '#1e293b',
+            padding: { left: 10, right: 10, top: 4, bottom: 4 }
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+        roundBtn.on('pointerdown', () => {
+            this.selectedRound = this.selectedRound >= 3 ? 1 : this.selectedRound + 1;
+            roundBtn.setText(`VÒNG ${this.selectedRound}`);
+            window.soundFX.playLaser(1.2);
+        });
+
         // Nút Đóng
-        const btnClose = this.add.text(0, 125, 'ĐÓNG ✕', {
+        const btnClose = this.add.text(0, 145, 'ĐÓNG ✕', {
             fontFamily: 'Orbitron, sans-serif',
             fontSize: '14px',
             fontWeight: '800',
@@ -546,7 +573,7 @@ class MenuScene extends Phaser.Scene {
             this.currentModal = null;
         });
 
-        modal.add([backdrop, box, title, soundLabel, soundBtn, gfxLabel, gfxBtn, ctrlLabel, ctrlInfo, btnClose]);
+        modal.add([backdrop, box, title, soundLabel, soundBtn, gfxLabel, gfxBtn, ctrlLabel, ctrlInfo, roundLabel, roundBtn, btnClose]);
     }
 
     /**
@@ -596,15 +623,69 @@ class MenuScene extends Phaser.Scene {
             '🏢 TP Dragonsoft\n' +
             '© Copyright @2026 TP Dragonsoft';
 
-        const infoText = this.add.text(0, -15, infoContent, {
+        const contentTop = top + (isCompact ? 42 : 65);
+        const viewportTop = top + (isCompact ? 40 : 60);
+        const viewportHeight = boxHeight - (isCompact ? 88 : 112);
+        const viewportLeft = left + 14;
+        const viewportWidth = boxWidth - 28;
+        const infoText = this.add.text(viewportLeft, contentTop, infoContent, {
             fontFamily: 'Rajdhani, sans-serif',
-            fontSize: isCompact ? '10.5px' : '13.5px',
+            fontSize: isCompact ? '12px' : '13.5px',
             fontWeight: '600',
-            color: '#e2e8f0',
+            color: '#ffffff',
             align: 'left',
-            lineSpacing: isCompact ? 0 : 2,
-            wordWrap: { width: boxWidth - 28 }
-        }).setOrigin(0, 0).setPosition(left + 14, top + (isCompact ? 42 : 65));
+            lineSpacing: isCompact ? 1 : 2,
+            wordWrap: { width: viewportWidth }
+        }).setOrigin(0, 0);
+
+        const clipArea = this.add.graphics();
+        clipArea.fillStyle(0xffffff, 1);
+        clipArea.fillRect(
+            width / 2 + viewportLeft,
+            height / 2 + viewportTop,
+            viewportWidth,
+            viewportHeight
+        );
+        clipArea.setVisible(true).setAlpha(0.001);
+        const needsScroll = infoText.height > viewportHeight;
+        if (needsScroll) {
+            infoText.setMask(clipArea.createGeometryMask());
+        } else {
+            clipArea.destroy();
+        }
+
+        const scrollArea = this.add.rectangle(
+            viewportLeft + viewportWidth / 2,
+            viewportTop + viewportHeight / 2,
+            viewportWidth,
+            viewportHeight,
+            0xffffff,
+            0
+        ).setInteractive();
+        let scrollOffset = 0;
+        let dragStartY = null;
+        let dragStartOffset = 0;
+        const maxScroll = () => Math.max(0, infoText.height - viewportHeight);
+        const applyScroll = (offset) => {
+            scrollOffset = Phaser.Math.Clamp(offset, 0, maxScroll());
+            infoText.y = contentTop - scrollOffset;
+        };
+
+        scrollArea.on('pointerdown', (pointer) => {
+            dragStartY = pointer.y;
+            dragStartOffset = scrollOffset;
+        });
+        this.input.on('pointermove', (pointer) => {
+            if (dragStartY !== null && pointer.isDown && this.currentModal === modal) {
+                applyScroll(dragStartOffset + dragStartY - pointer.y);
+            }
+        });
+        this.input.on('pointerup', () => {
+            dragStartY = null;
+        });
+        this.input.on('wheel', (pointer, currentlyOver, deltaX, deltaY) => {
+            if (this.currentModal === modal) applyScroll(scrollOffset + deltaY * 0.6);
+        });
 
         const btnClose = this.add.text(0, 150, 'ĐÃ HIỂU ✓', {
             fontFamily: 'Orbitron, sans-serif',
@@ -620,7 +701,7 @@ class MenuScene extends Phaser.Scene {
             this.currentModal = null;
         });
 
-        modal.add([backdrop, box, title, infoText, btnClose]);
+        modal.add([backdrop, box, infoText, scrollArea, title, btnClose]);
     }
 
     update() {

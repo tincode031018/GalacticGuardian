@@ -48,12 +48,14 @@ class GameScene extends Phaser.Scene {
     create() {
         const { width, height } = this.scale;
         this.isPortrait = height >= width;
+        window.soundFX.playMusic(`sound/round${this.round}.mp3`);
 
         // Bật hệ thống vật lý Arcade
         this.physics.world.setBounds(0, 0, width, height);
 
         // 1. Tạo Bầu Trời Sao & Các Tầng Hành Tinh Parallax
         this.createSpaceEnvironment();
+        this.createGameplayBackground();
 
         // 2. Tạo Emitter Hạt (Thrusters, Sparks, Explosions)
         this.createParticleSystems();
@@ -151,6 +153,7 @@ class GameScene extends Phaser.Scene {
      * NỀN ROUND 2/3: ẢNH NHÌN TỪ TRÊN XUỐNG CUỐN LIÊN TỤC (TOP-DOWN SCROLLING)
      */
     applyRoundBackdrop() {
+        if (this.landscapeBackground) return;
         if (!this.textures.exists('background2')) return;
         const { width, height } = this.scale;
 
@@ -163,6 +166,21 @@ class GameScene extends Phaser.Scene {
         } else {
             this.bgTile.setSize(width, height).setPosition(width / 2, height / 2);
         }
+    }
+
+    createLandscapeBackground() {
+        if (this.round < 2) return;
+        const backgroundKey = this.isPortrait ? 'homescreen' : 'homescreen2';
+        if (!this.textures.exists(backgroundKey)) return;
+        const { width, height } = this.scale;
+        this.landscapeBackground = this.add.image(width / 2, height / 2, backgroundKey)
+            .setDepth(-2)
+            .setScrollFactor(0);
+        this.landscapeBackground.setDisplaySize(width, height);
+    }
+
+    createGameplayBackground() {
+        this.createLandscapeBackground();
     }
 
     /**
@@ -292,7 +310,7 @@ class GameScene extends Phaser.Scene {
 
         const planet = this.add.image(startX, startY, key)
             .setScale(scale)
-            .setAlpha(0.7)
+            .setAlpha(1)
             .setDepth(1);
 
         planet.speedX = speedX;
@@ -613,8 +631,10 @@ class GameScene extends Phaser.Scene {
         }
 
         enemy.waveMode = waveMode;
-        enemy.freq = Phaser.Math.FloatBetween(0.003, 0.005);
-        enemy.amp = Phaser.Math.Between(40, 75);
+        enemy.freq = Phaser.Math.FloatBetween(0.0022, 0.0034);
+        enemy.amp = Phaser.Math.Between(18, 32);
+        enemy.laneFollow = 0.08;
+        enemy.weavePhase = Phaser.Math.FloatBetween(0, Math.PI * 2);
 
         // Tần suất bắn: enemy3 phun lửa chậm hơn, enemy2 bắn nhanh và nguy hiểm
         const fireDelay = enemy.fireMode === 'fireball' ? Phaser.Math.Between(1900, 2600)
@@ -665,6 +685,7 @@ class GameScene extends Phaser.Scene {
      */
     spawnBoss() {
         this.bossActive = true;
+        window.soundFX.playMusic('sound/bossfight.mp3', 0.55);
         const { width, height } = this.scale;
         this.events.emit('bossSpawned');
 
@@ -783,6 +804,7 @@ class GameScene extends Phaser.Scene {
                     if (bullet) {
                         bullet.setDisplaySize(28, 28);
                         bullet.setVelocity(Math.cos(angleToPlayer + offset) * 360, Math.sin(angleToPlayer + offset) * 360);
+                        bullet.setDepth(18);
                         bullet.setBlendMode('ADD');
                     }
                 });
@@ -796,6 +818,7 @@ class GameScene extends Phaser.Scene {
                 if (bullet) {
                     bullet.setDisplaySize(26, 26);
                     bullet.setVelocity(Math.cos(rad) * 260, Math.sin(rad) * 260);
+                    bullet.setDepth(18);
                     bullet.setBlendMode('ADD');
                 }
             }
@@ -855,7 +878,7 @@ class GameScene extends Phaser.Scene {
     createPlayerBullet(x, y, vx, vy, textureKey) {
         const bullet = this.playerBullets.create(x, y, textureKey);
         if (bullet) {
-            bullet.setDepth(8);
+            bullet.setDepth(18);
             bullet.setBlendMode('ADD');
             bullet.setVelocity(vx, vy);
         }
@@ -884,7 +907,7 @@ class GameScene extends Phaser.Scene {
                     bullet.setRotation(Math.atan2(Math.sin(angleToPlayer + offset), Math.cos(angleToPlayer + offset)) + (this.isPortrait ? Math.PI / 2 : 0));
                     bullet.setVelocity(Math.cos(angleToPlayer + offset) * 340, Math.sin(angleToPlayer + offset) * 340);
                     bullet.setTint(0xcc44ff);
-                    bullet.setDepth(8);
+                    bullet.setDepth(18);
                     bullet.setBlendMode('ADD');
                 }
             });
@@ -913,7 +936,7 @@ class GameScene extends Phaser.Scene {
                 if (fireball) {
                     fireball.setDisplaySize(34, 34);
                     fireball.setVelocity(vx, vy);
-                    fireball.setDepth(9);
+                    fireball.setDepth(18);
                     fireball.setBlendMode('ADD');
                     // Cầu lửa phồng xẹp như đang bùng cháy
                     this.tweens.add({
@@ -943,7 +966,7 @@ class GameScene extends Phaser.Scene {
                 bullet.setDisplaySize(20, 8);
                 bullet.setVelocityX(-400);
             }
-            bullet.setDepth(8);
+            bullet.setDepth(18);
             bullet.setBlendMode('ADD');
             window.soundFX.playEnemyLaser();
         }
@@ -970,7 +993,7 @@ class GameScene extends Phaser.Scene {
             bullet.isAllyBullet = true;
             bullet.damage = 4;
             bullet.setTint(tint);
-            bullet.setDepth(9);
+            bullet.setDepth(18);
             bullet.setBlendMode('ADD');
             if (ally.fireMode === 'fireball') {
                 bullet.setDisplaySize(28, 28);
@@ -1088,9 +1111,10 @@ class GameScene extends Phaser.Scene {
                 } else {
                     rocket.setDisplaySize(targetLong, targetLong * (rh / rw));
                 }
-                rocket.setDepth(11);
-                const initAngle = this.isPortrait ? (side < 0 ? -2.3 : -0.8) : (side < 0 ? -0.7 : 0.7);
-                rocket.setRotation(initAngle);
+                rocket.setDepth(18);
+                const initAngle = this.isPortrait ? -Math.PI / 2 : 0;
+                rocket.flightAngle = initAngle;
+                rocket.setRotation(initAngle + Math.PI / 2);
                 const rSpeed = 320;
                 rocket.setVelocity(Math.cos(initAngle) * rSpeed, Math.sin(initAngle) * rSpeed);
                 rocket.lifeTime = 0;
@@ -1353,6 +1377,7 @@ class GameScene extends Phaser.Scene {
     advanceToRound(nextRound) {
         if (this.isGameOver) return;
         this.round = nextRound;
+        window.soundFX.playMusic(`sound/round${this.round}.mp3`);
         this.currentWave = 0;
         this.wave = 1;
         this.bossDefeatedOnce = false;
@@ -2443,10 +2468,11 @@ class GameScene extends Phaser.Scene {
 
                 if (target && target.active) {
                     const targetAngle = Phaser.Math.Angle.Between(rocket.x, rocket.y, target.x, target.y);
-                    rocket.rotation = Phaser.Math.Angle.RotateTo(rocket.rotation, targetAngle, 0.18);
+                    rocket.flightAngle = Phaser.Math.Angle.RotateTo(rocket.flightAngle, targetAngle, 0.018);
                 }
 
-                const rAngle = rocket.rotation;
+                const rAngle = rocket.flightAngle;
+                rocket.rotation = rAngle + Math.PI / 2;
                 const missileSpeed = 580; // Vận tốc bay tên lửa cực nhanh
                 rocket.setVelocity(Math.cos(rAngle) * missileSpeed, Math.sin(rAngle) * missileSpeed);
 
@@ -2475,10 +2501,16 @@ class GameScene extends Phaser.Scene {
         this.enemies.getChildren().forEach(enemy => {
             if (enemy.active && !enemy.isBoss && enemy.basePos !== undefined) {
                 if (enemy.isVertical) {
-                    enemy.x = enemy.basePos + Math.sin(time * enemy.freq) * enemy.amp;
+                    const playerLane = this.player && this.player.active ? this.player.x : enemy.basePos;
+                    const laneTarget = enemy.basePos + (playerLane - enemy.basePos) * enemy.laneFollow;
+                    const weaveTarget = laneTarget + Math.sin(time * enemy.freq + enemy.weavePhase) * enemy.amp;
+                    enemy.x = Phaser.Math.Linear(enemy.x, weaveTarget, 0.12);
                     if (enemy.y > height + 80) enemy.destroy();
                 } else {
-                    enemy.y = enemy.basePos + Math.sin(time * enemy.freq) * enemy.amp;
+                    const playerLane = this.player && this.player.active ? this.player.y : enemy.basePos;
+                    const laneTarget = enemy.basePos + (playerLane - enemy.basePos) * enemy.laneFollow;
+                    const weaveTarget = laneTarget + Math.sin(time * enemy.freq + enemy.weavePhase) * enemy.amp;
+                    enemy.y = Phaser.Math.Linear(enemy.y, weaveTarget, 0.12);
                     if (enemy.x < -80) enemy.destroy();
                 }
             }
@@ -2529,9 +2561,21 @@ class GameScene extends Phaser.Scene {
         if (this.bgTile) {
             this.bgTile.setSize(width, height).setPosition(width / 2, height / 2);
         }
+        if (this.landscapeBackground) {
+            this.landscapeBackground.setPosition(width / 2, height / 2).setDisplaySize(width, height);
+        }
 
         if (newIsPortrait !== this.isPortrait) {
             this.isPortrait = newIsPortrait;
+            if (this.round < 2 && this.landscapeBackground) {
+                this.landscapeBackground.destroy();
+                this.landscapeBackground = null;
+            }
+            if (this.landscapeBackground) {
+                this.landscapeBackground.destroy();
+                this.landscapeBackground = null;
+            }
+            this.createGameplayBackground();
             if (this.player && this.player.active) {
                 const newKey = this.getPlayerSpriteKey();
                 if (newKey && this.textures.exists(newKey)) {

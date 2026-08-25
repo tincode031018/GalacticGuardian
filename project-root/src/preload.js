@@ -8,6 +8,7 @@ window.soundFX = {
     ctx: null,
     muted: false,
     audioCache: {},
+    musicPath: null,
     init() {
         if (this.ctx) return;
         try {
@@ -24,6 +25,7 @@ window.soundFX = {
     },
     toggleMute() {
         this.muted = !this.muted;
+        if (this.muted) this.stopMusic();
         return this.muted;
     },
     playFile(path, volume = 1) {
@@ -36,6 +38,25 @@ window.soundFX = {
         audio.volume = volume;
         audio.currentTime = 0;
         audio.play().catch(() => {});
+    },
+    playMusic(path, volume = 0.45) {
+        if (this.muted) return;
+        if (this.musicPath === path && this.audioCache[path] && !this.audioCache[path].paused) return;
+        this.stopMusic();
+        const music = this.audioCache[path] || new Audio(path);
+        this.audioCache[path] = music;
+        this.musicPath = path;
+        music.loop = true;
+        music.volume = volume;
+        music.currentTime = 0;
+        music.play().catch(() => {});
+    },
+    stopMusic() {
+        if (!this.musicPath || !this.audioCache[this.musicPath]) return;
+        const music = this.audioCache[this.musicPath];
+        music.pause();
+        music.currentTime = 0;
+        this.musicPath = null;
     },
     playBossDefeat() {
         this.playFile('sound/noboss.mp3', 0.9);
@@ -293,6 +314,8 @@ class PreloadScene extends Phaser.Scene {
         this.load.image('rocket', 'assets/phithuyen/rocket.png' + cacheBust);
         this.load.image('homescreen', 'assets/homescreen.png' + cacheBust);
         this.load.image('menubackground', 'assets/menu.jpg' + cacheBust);
+        this.load.image('menubackground2', 'assets/menu2.jpg' + cacheBust);
+        this.load.image('homescreen2', 'assets/homescreen2.png' + cacheBust);
 
         // 1.5 Nền Round 2/3 - Góc nhìn từ trên xuống (Top-Down View Background)
         this.load.image('background2', 'assets/phithuyen/background2.jpg' + cacheBust);
@@ -353,6 +376,8 @@ class PreloadScene extends Phaser.Scene {
             ['rocket', 'assets/phithuyen/rocket.png'],
             ['homescreen', 'assets/homescreen.png'],
             ['menubackground', 'assets/menu.jpg'],
+            ['menubackground2', 'assets/menu2.jpg'],
+            ['homescreen2', 'assets/homescreen2.png'],
             ['background2', 'assets/phithuyen/background2.jpg'],
             ['phihanhgia', 'assets/vatthe/phihanhgia.png'],
             ['traidat', 'assets/vatthe/traidat.png'],
