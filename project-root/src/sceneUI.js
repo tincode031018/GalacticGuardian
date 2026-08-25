@@ -67,6 +67,7 @@ class UIScene extends Phaser.Scene {
         }).setOrigin(0.5);
 
         this.bossBarContainer.add([bossBarBg, this.bossHpFill, this.bossShieldFill, this.bossNameText]);
+        this.applyResponsiveLayout(width, height);
 
         // Thiết lập DOM Buttons & Joystick Listener
         this.setupDOMControls();
@@ -469,9 +470,32 @@ class UIScene extends Phaser.Scene {
     }
 
     handleResize(gameSize) {
-        const { width } = gameSize;
-        if (this.waveText) this.waveText.setPosition(width / 2, 20);
-        if (this.bossBarContainer) this.bossBarContainer.setPosition(width / 2, 60);
+        const { width, height } = gameSize;
+        this.applyResponsiveLayout(width, height);
+    }
+
+    applyResponsiveLayout(width, height) {
+        const isCompact = width <= 768;
+        if (this.scoreText) {
+            this.scoreText.setPosition(isCompact ? 10 : 20, isCompact ? 10 : 20);
+            this.scoreText.setFontSize(isCompact ? 12 : 18);
+        }
+        if (this.astronautText) {
+            this.astronautText.setPosition(isCompact ? 10 : 20, isCompact ? 32 : 46);
+            this.astronautText.setFontSize(isCompact ? 12 : 17);
+        }
+        if (this.hudHpText) {
+            this.hudHpText.setPosition(isCompact ? 10 : 20, isCompact ? 54 : 72);
+            this.hudHpText.setFontSize(isCompact ? 11 : 15);
+        }
+        if (this.waveText) {
+            this.waveText.setPosition(isCompact ? width - 52 : width / 2, isCompact ? 10 : 20);
+            this.waveText.setFontSize(isCompact ? 11 : 16);
+        }
+        if (this.bossBarContainer) {
+            this.bossBarContainer.setPosition(width / 2, isCompact ? 78 : 60);
+            this.bossBarContainer.setScale(isCompact ? 0.7 : 1);
+        }
     }
 }
 

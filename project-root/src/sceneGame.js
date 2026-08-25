@@ -72,6 +72,8 @@ class GameScene extends Phaser.Scene {
         this.allyBullets = this.physics.add.group({ maxSize: 60 });
         this.meteors = this.physics.add.group(); // NHÓM THIÊN THẠCH (ROUND 3)
         this.electricBeamGraphics = this.add.graphics().setDepth(22);
+        this.allyLinkGraphics = this.add.graphics().setDepth(12);
+        this.electricShieldArcGraphics = this.add.graphics().setDepth(12);
         this.lastAllyFireTime = 0;
 
         // 3.5 Nền Round 2/3: Bay nhìn từ trên xuống (Top-Down Scrolling Ground)
@@ -343,6 +345,7 @@ class GameScene extends Phaser.Scene {
     }
 
     createPlayer(x, y) {
+        document.body.classList.add('game-active');
         const spriteKey = this.getPlayerSpriteKey();
         this.player = this.physics.add.sprite(x, y, spriteKey);
         this.fitPlayerSize();
@@ -946,6 +949,40 @@ class GameScene extends Phaser.Scene {
         }
     }
 
+    allyFire(ally) {
+        if (this.isGameOver || !ally || !ally.active) return;
+
+        const targets = this.enemies.getChildren().filter(enemy => enemy.active);
+        const target = targets.length > 0 ? Phaser.Math.RND.pick(targets) : null;
+        const textureKey = this.isPortrait ? 'bullet_enemy_v' : 'bullet_enemy_h';
+        const angle = target
+            ? Phaser.Math.Angle.Between(ally.x, ally.y, target.x, target.y)
+            : (this.isPortrait ? -Math.PI / 2 : 0);
+        const speed = ally.fireMode === 'fireball' ? 250 : ally.fireMode === 'aimed' ? 340 : 520;
+        const tint = ally.fireMode === 'fireball' ? 0xff8833 : ally.fireMode === 'aimed' ? 0xcc44ff : 0xff3355;
+        const offsets = ally.fireMode === 'aimed' ? [-0.18, 0, 0.18] : [0];
+
+        offsets.forEach(offset => {
+            const bulletTexture = ally.fireMode === 'fireball' ? 'bullet_fireball' : textureKey;
+            const bullet = this.allyBullets.create(ally.x, ally.y, bulletTexture);
+            if (!bullet) return;
+
+            bullet.isAllyBullet = true;
+            bullet.damage = 4;
+            bullet.setTint(tint);
+            bullet.setDepth(9);
+            bullet.setBlendMode('ADD');
+            if (ally.fireMode === 'fireball') {
+                bullet.setDisplaySize(28, 28);
+            } else {
+                bullet.setDisplaySize(this.isPortrait ? 8 : 20, this.isPortrait ? 20 : 8);
+                bullet.setRotation(angle + offset + (this.isPortrait ? Math.PI / 2 : 0));
+            }
+            bullet.setVelocity(Math.cos(angle + offset) * speed, Math.sin(angle + offset) * speed);
+        });
+        window.soundFX.playEnemyLaser();
+    }
+
     handleBulletHitEnemy(bullet, enemy) {
         if (!bullet.active || !enemy.active) return;
         const dmg = bullet.damage !== undefined ? bullet.damage : (bullet.isAllyBullet ? 4 : 15);
@@ -1219,7 +1256,10 @@ class GameScene extends Phaser.Scene {
             return;
         }
 
-        const droneKey = this.getEnemySpriteKey();
+        const capturedEnemies = this.enemies.getChildren().filter(enemy => enemy.active && !enemy.isBoss);
+        const capturedEnemy = capturedEnemies.length > 0 ? Phaser.Math.RND.pick(capturedEnemies) : null;
+        const capturedBase = capturedEnemy ? capturedEnemy.enemyBase : this.pickEnemyBaseKey();
+        const droneKey = this.getEnemySpriteKey(capturedBase);
         const drone = this.allies.create(this.player.x, this.player.y + 40, droneKey);
         if (!drone) return;
 
@@ -1227,6 +1267,10 @@ class GameScene extends Phaser.Scene {
         drone.setDepth(13);
         drone.setTint(0x00f0ff);
         drone.allyIndex = allyCount;
+        drone.enemyBase = capturedBase;
+        drone.fireMode = capturedEnemy
+            ? capturedEnemy.fireMode
+            : capturedBase === 'enemy3' ? 'fireball' : capturedBase === 'enemy2' ? 'aimed' : 'straight';
         // ĐỒNG MINH CÓ MÁU YẾU (có thể bị hạ gục bởi đạn địch)
         drone.maxHp = 30;
         drone.hp = 30;
@@ -1257,6 +1301,7 @@ class GameScene extends Phaser.Scene {
         this.bossActive = false;
         if (this.bossAttackTimer) this.bossAttackTimer.remove();
         this.events.emit('bossDefeated');
+        window.soundFX.playBossDefeat();
 
         const x = boss.x;
         const y = boss.y;
@@ -1524,6 +1569,83 @@ class GameScene extends Phaser.Scene {
         }
         this.electricShieldOrbs.forEach(o => { if (o && o.active) o.destroy(); });
         this.electricShieldOrbs = [];
+        if (this.electricShieldArcGraphics) this.electricShieldArcGraphics.clear();
+    }
+
+    drawElectricShieldArcs() {
+        if (!this.player || !this.player.active || !this.electricShieldArcGraphics) return;
+
+        const graphics = this.electricShieldArcGraphics;
+        const radius = 48;
+        const points = 18;
+        const phase = this.time.now * 0.012;
+        graphics.clear();
+        graphics.lineStyle(2.2, 0xcc44ff, 0.9);
+        graphics.beginPath();
+
+        for (let i = 0; i <= points; i++) {
+            const angle = (i / points) * Math.PI * 2 + phase * 0.02;
+            const jitter = i === 0 || i === points ? 0 : Phaser.Math.FloatBetween(-7, 7);
+            const x = this.player.x + Math.cos(angle) * (radius + jitter);
+            const y = this.player.y + Math.sin(angle) * (radius + jitter);
+            if (i === 0) graphics.moveTo(x, y);
+            else graphics.lineTo(x, y);
+        }
+        graphics.strokePath();
+
+        graphics.lineStyle(1, 0xffffff, 0.95);
+        graphics.beginPath();
+        for (let i = 0; i < points; i += 3) {
+            const startAngle = (i / points) * Math.PI * 2 + phase * 0.02;
+            const endAngle = startAngle + Phaser.Math.FloatBetween(0.12, 0.28);
+            graphics.moveTo(
+                this.player.x + Math.cos(startAngle) * radius,
+                this.player.y + Math.sin(startAngle) * radius
+            );
+            graphics.lineTo(
+                this.player.x + Math.cos(endAngle) * (radius + Phaser.Math.Between(-5, 5)),
+                this.player.y + Math.sin(endAngle) * (radius + Phaser.Math.Between(-5, 5))
+            );
+        }
+        graphics.strokePath();
+    }
+
+    drawAllyEnergyLinks(alliesList) {
+        if (!this.player || !this.player.active || !this.allyLinkGraphics) return;
+
+        const graphics = this.allyLinkGraphics;
+        graphics.clear();
+        if (alliesList.length === 0) return;
+
+        const pulse = this.time.now * 0.01;
+        alliesList.forEach((ally, index) => {
+            const dx = ally.x - this.player.x;
+            const dy = ally.y - this.player.y;
+            const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+            const nx = -dy / distance;
+            const ny = dx / distance;
+            const segments = 7;
+
+            graphics.lineStyle(3, 0x00f0ff, 0.16 + 0.08 * Math.sin(pulse + index));
+            graphics.beginPath();
+            graphics.moveTo(this.player.x, this.player.y);
+            for (let step = 1; step < segments; step++) {
+                const progress = step / segments;
+                const offset = Math.sin(pulse * 1.7 + step * 2.1 + index) * 9;
+                graphics.lineTo(
+                    Phaser.Math.Linear(this.player.x, ally.x, progress) + nx * offset,
+                    Phaser.Math.Linear(this.player.y, ally.y, progress) + ny * offset
+                );
+            }
+            graphics.lineTo(ally.x, ally.y);
+            graphics.strokePath();
+
+            graphics.lineStyle(1, 0xffffff, 0.5);
+            graphics.beginPath();
+            graphics.moveTo(this.player.x, this.player.y);
+            graphics.lineTo(ally.x, ally.y);
+            graphics.strokePath();
+        });
     }
 
     /**
@@ -1702,6 +1824,7 @@ class GameScene extends Phaser.Scene {
         this.isThunderActive = true;
         this.thunderStrikeCount = 0;
 
+        window.soundFX.playElectricUltimate();
         window.soundFX.playUltimate();
         window.soundFX.playTractorBeam();
         this.cameras.main.shake(300, 0.014);
@@ -2148,6 +2271,7 @@ class GameScene extends Phaser.Scene {
                     orb.y = this.player.y + Math.sin(angle) * 62;
                     orb.setVisible(true);
                 });
+                this.drawElectricShieldArcs();
 
                 // Hết 15 giây → tắt khiên
                 if (this.electricShieldTimer <= 0) {
@@ -2278,28 +2402,16 @@ class GameScene extends Phaser.Scene {
 
                 // Đồng minh tự động xả đạn Laser hỗ trợ mỗi 380ms (Sát thương hỗ trợ nhẹ: 4 dmg)
                 if (time - (this.lastAllyFireTime || 0) > 380) {
-                    const bKey = this.isPortrait ? 'bullet_player_v' : 'bullet_player_h';
-                    const bullet = this.allyBullets.create(drone.x, drone.y, bKey);
-                    if (bullet) {
-                        bullet.isAllyBullet = true;
-                        bullet.damage = 4; // Sát thương hỗ trợ nhẹ nhàng (bằng ~1/4 đạn phi thuyền chính)
-                        bullet.setDisplaySize(this.isPortrait ? 7 : 20, this.isPortrait ? 20 : 7);
-                        bullet.setTint(0x00ff88);
-                        bullet.setBlendMode('ADD');
-                        bullet.setDepth(9);
-                        if (this.isPortrait) {
-                            bullet.setVelocityY(-850);
-                        } else {
-                            bullet.setVelocityX(850);
-                        }
-                    }
+                    this.allyFire(drone);
                 }
             });
+            this.drawAllyEnergyLinks(alliesList);
 
             if (alliesList.length > 0 && time - (this.lastAllyFireTime || 0) > 380) {
                 this.lastAllyFireTime = time;
-                window.soundFX.playLaser(1.8);
             }
+        } else if (this.allyLinkGraphics) {
+            this.allyLinkGraphics.clear();
         }
 
         // 6. Vật lý Tên Lửa Tự Tìm Diệt (Homing Rockets Tracking Physics)

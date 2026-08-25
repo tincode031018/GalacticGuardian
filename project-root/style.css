@@ -56,6 +56,11 @@ canvas {
     height: 100%;
     pointer-events: none;
     z-index: 50;
+    display: none;
+}
+
+body.game-active #mobile-controls {
+    display: block;
 }
 
 /* Virtual Joystick Zone */
@@ -268,6 +273,10 @@ canvas {
     opacity: 0;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     z-index: 70;
+    max-width: calc(100vw - 32px);
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 #notification-banner.show {
@@ -305,9 +314,28 @@ canvas {
 
 /* Responsive Customizations */
 @media (max-width: 768px) {
+    #notification-banner {
+        top: 64px;
+        padding: 8px 12px;
+        font-size: 11px;
+        letter-spacing: 0.5px;
+    }
+
+    .top-controls {
+        top: max(8px, env(safe-area-inset-top));
+        right: 8px;
+        gap: 6px;
+    }
+
+    .icon-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 15px;
+    }
+
     .joystick-zone {
-        bottom: 20px;
-        left: 20px;
+        bottom: max(12px, env(safe-area-inset-bottom));
+        left: 12px;
         width: 140px;
         height: 140px;
     }
@@ -322,11 +350,33 @@ canvas {
     .btn-fire {
         width: 70px;
         height: 70px;
-        font-size: 12px;
+        font-size: 11px;
+        letter-spacing: 0;
     }
     .btn-ultimate {
         width: 58px;
         height: 58px;
         font-size: 10px;
+        letter-spacing: 0;
+    }
+
+    .action-zone {
+        bottom: max(12px, env(safe-area-inset-bottom));
+        right: 12px;
+        gap: 9px;
+    }
+
+    .action-btn small {
+        font-size: 8px;
+        line-height: 1;
+    }
+
+    .btn-capture small {
+        display: none;
+    }
+
+    .btn-capture span {
+        font-size: 10px;
+        white-space: nowrap;
     }
 }

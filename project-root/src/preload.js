@@ -7,6 +7,7 @@
 window.soundFX = {
     ctx: null,
     muted: false,
+    audioCache: {},
     init() {
         if (this.ctx) return;
         try {
@@ -24,6 +25,23 @@ window.soundFX = {
     toggleMute() {
         this.muted = !this.muted;
         return this.muted;
+    },
+    playFile(path, volume = 1) {
+        if (this.muted) return;
+        let audio = this.audioCache[path];
+        if (!audio) {
+            audio = new Audio(path);
+            this.audioCache[path] = audio;
+        }
+        audio.volume = volume;
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+    },
+    playBossDefeat() {
+        this.playFile('sound/noboss.mp3', 0.9);
+    },
+    playElectricUltimate() {
+        this.playFile('sound/phongdien.mp3', 0.85);
     },
     playLaser(pitch = 1) {
         if (this.muted || !this.ctx) return;
@@ -273,6 +291,8 @@ class PreloadScene extends Phaser.Scene {
         this.load.image('boss2a', 'assets/phithuyen/boss2a.png' + cacheBust);
         this.load.image('boss2b', 'assets/phithuyen/boss2b.png' + cacheBust);
         this.load.image('rocket', 'assets/phithuyen/rocket.png' + cacheBust);
+        this.load.image('homescreen', 'assets/homescreen.png' + cacheBust);
+        this.load.image('menubackground', 'assets/menu.jpg' + cacheBust);
 
         // 1.5 Nền Round 2/3 - Góc nhìn từ trên xuống (Top-Down View Background)
         this.load.image('background2', 'assets/phithuyen/background2.jpg' + cacheBust);
@@ -331,6 +351,8 @@ class PreloadScene extends Phaser.Scene {
             ['boss2a', 'assets/phithuyen/boss2a.png'],
             ['boss2b', 'assets/phithuyen/boss2b.png'],
             ['rocket', 'assets/phithuyen/rocket.png'],
+            ['homescreen', 'assets/homescreen.png'],
+            ['menubackground', 'assets/menu.jpg'],
             ['background2', 'assets/phithuyen/background2.jpg'],
             ['phihanhgia', 'assets/vatthe/phihanhgia.png'],
             ['traidat', 'assets/vatthe/traidat.png'],

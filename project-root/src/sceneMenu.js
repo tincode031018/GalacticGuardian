@@ -12,12 +12,21 @@ class MenuScene extends Phaser.Scene {
 
     create() {
         const { width, height } = this.scale;
+        document.body.classList.remove('game-active');
+        this.menuElements = [];
+        const hasHomeBackground = this.textures.exists('homescreen');
+        this.hasHomeBackground = hasHomeBackground;
+
+        if (hasHomeBackground) {
+            const background = this.add.image(width / 2, height / 2, 'homescreen').setDepth(-10);
+            background.setScale(Math.max(width / background.width, height / background.height));
+        }
 
         // 1. Tạo Bầu Trời Sao Parallax Động
-        this.createStarfield();
+        if (!hasHomeBackground) this.createStarfield();
 
         // 2. Tạo Các Hành Tinh Vũ Trụ Trôi Dạt
-        this.createFloatingPlanets();
+        if (!hasHomeBackground) this.createFloatingPlanets();
 
         // 3. Tiêu Đề Game Rực Rỡ
         const titleContainer = this.add.container(width / 2, height * 0.15);
@@ -39,6 +48,9 @@ class MenuScene extends Phaser.Scene {
         }).setOrigin(0.5);
 
         titleContainer.add([titleGlow, subTitle]);
+        titleContainer.setVisible(!hasHomeBackground);
+        this.menuTitleContainer = titleContainer;
+        this.menuElements.push(titleContainer);
 
         this.tweens.add({
             targets: titleGlow,
@@ -50,16 +62,30 @@ class MenuScene extends Phaser.Scene {
         });
 
         // 4. Khu Vực Chọn Phi Thuyền (Ship Selection)
-        this.createShipSelector(width / 2, height * 0.45);
+        const shipSelector = this.createShipSelector(width / 2, height * 0.45);
+        this.menuElements.push(shipSelector);
 
         // 5. Hướng Dẫn Điều Khiển Rút Gọn
-        this.add.text(width / 2, height * 0.69, '📱 Mobile: Cần gạt + Bắn + [E] | 💻 PC: WASD + Chuột + Space + [E] Thu Phục', {
-            fontFamily: 'Rajdhani, sans-serif',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#00f0ff',
-            align: 'center'
-        }).setOrigin(0.5);
+        if (width > 768) {
+            const controlHint = this.add.text(width / 2, height * 0.69, 'PC: WASD + Chuột + Space + E Thu Phục', {
+                fontFamily: 'Rajdhani, sans-serif',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#00f0ff',
+                align: 'center',
+                wordWrap: { width: width - 32 }
+            }).setOrigin(0.5);
+            this.menuElements.push(controlHint);
+        }
+
+        const startGame = () => {
+            window.soundFX.init();
+            window.soundFX.playPowerup();
+            const isPortrait = this.scale.height >= this.scale.width;
+            const shipType = this.selectedShipBase + (isPortrait ? 'a' : 'b');
+            document.body.classList.add('game-active');
+            this.scene.start('GameScene', { shipType: shipType });
+        };
 
         // 6. Nút Bắt Đầu (Start Button)
         const btnStart = this.add.container(width / 2, height * 0.78);
@@ -80,6 +106,7 @@ class MenuScene extends Phaser.Scene {
         btnStart.add([btnBg, btnText]);
         btnStart.setSize(220, 44);
         btnStart.setInteractive({ useHandCursor: true });
+        this.menuElements.push(btnStart);
 
         btnStart.on('pointerover', () => {
             btnBg.clear();
@@ -98,11 +125,7 @@ class MenuScene extends Phaser.Scene {
         });
 
         btnStart.on('pointerdown', () => {
-            window.soundFX.init();
-            window.soundFX.playPowerup();
-            const isPortrait = this.scale.height >= this.scale.width;
-            const shipType = this.selectedShipBase + (isPortrait ? 'a' : 'b');
-            this.scene.start('GameScene', { shipType: shipType });
+            startGame();
         });
 
         // 7. CẶP NÚT CÀI ĐẶT & THÔNG TIN DƯỚI NÚT XUẤT KÍCH
@@ -126,6 +149,7 @@ class MenuScene extends Phaser.Scene {
         btnSettings.add([bgSet, txtSet]);
         btnSettings.setSize(112, 36);
         btnSettings.setInteractive({ useHandCursor: true });
+        this.menuElements.push(btnSettings);
 
         btnSettings.on('pointerover', () => {
             bgSet.clear();
@@ -169,6 +193,7 @@ class MenuScene extends Phaser.Scene {
         btnInfo.add([bgInfo, txtInfo]);
         btnInfo.setSize(112, 36);
         btnInfo.setInteractive({ useHandCursor: true });
+        this.menuElements.push(btnInfo);
 
         btnInfo.on('pointerover', () => {
             bgInfo.clear();
@@ -195,18 +220,66 @@ class MenuScene extends Phaser.Scene {
         });
 
         // 8. COPYRIGHT FOOTER CREDIT
-        this.add.text(width / 2, height * 0.95, 'Copyright @2026 TP Dragonsoft', {
+        const footer = this.add.text(width / 2, height * 0.95, 'Copyright @2026 TP Dragonsoft', {
             fontFamily: 'Rajdhani, sans-serif',
             fontSize: '13px',
             fontWeight: '600',
             color: '#64748b',
             letterSpacing: 1
         }).setOrigin(0.5);
+        this.menuElements.push(footer);
+
+        this.showIntroScreen(width, height);
 
         // Resize Listener
         this.scale.on('resize', () => {
             this.scene.restart();
         });
+    }
+
+    showIntroScreen(width, height) {
+        this.menuElements.forEach(element => {
+            if (element) element.setVisible(false);
+        });
+
+        const intro = this.add.container(0, 0).setDepth(100);
+        const hitArea = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0)
+            .setInteractive({ useHandCursor: true });
+        const prompt = this.add.text(width / 2, height * 0.78, 'CHẠM ĐỂ CHƠI', {
+            fontFamily: 'Orbitron, sans-serif',
+            fontSize: Math.min(20, width * 0.06) + 'px',
+            fontWeight: '900',
+            color: '#ffffff',
+            stroke: '#0077ff',
+            strokeThickness: 3,
+            align: 'center'
+        }).setOrigin(0.5);
+
+        this.tweens.add({
+            targets: prompt,
+            alpha: { from: 1, to: 0.2 },
+            duration: 650,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+
+        const enterMenu = () => {
+            this.createShipMenuBackground(width, height);
+            this.menuElements.forEach(element => {
+                if (element) element.setVisible(element !== this.menuTitleContainer || !this.hasHomeBackground);
+            });
+            intro.destroy();
+        };
+
+        hitArea.on('pointerdown', enterMenu);
+        intro.add([hitArea, prompt]);
+    }
+
+    createShipMenuBackground(width, height) {
+        if (this.shipMenuBackground || !this.textures.exists('menubackground')) return;
+        this.shipMenuBackground = this.add.image(width / 2, height / 2, 'menubackground').setDepth(-9);
+        this.shipMenuBackground.setScale(Math.max(width / this.shipMenuBackground.width, height / this.shipMenuBackground.height));
     }
 
     createStarfield() {
@@ -274,10 +347,15 @@ class MenuScene extends Phaser.Scene {
         const isPortrait = this.scale.height >= this.scale.width;
 
         const frame = this.add.graphics();
-        frame.fillStyle(0x0a1628, 0.85);
+        frame.fillStyle(0x0a1628, 0.16);
         frame.fillRoundedRect(-160, -95, 320, 190, 18);
-        frame.lineStyle(2, 0x00f0ff, 0.7);
+        frame.lineStyle(2, 0x00f0ff, 0.35);
         frame.strokeRoundedRect(-160, -95, 320, 190, 18);
+
+        const neonBorder = this.add.graphics();
+        const neonBorderInner = this.add.graphics();
+        this.shipNeonBorders = [neonBorder, neonBorderInner];
+        this.shipNeonBounds = { left: -160, top: -95, width: 320, height: 190 };
 
         const selectTitle = this.add.text(0, -70, 'CHỌN PHI THUYỀN', {
             fontFamily: 'Rajdhani, sans-serif',
@@ -344,7 +422,8 @@ class MenuScene extends Phaser.Scene {
         arrowLeft.on('pointerdown', toggleShip);
         arrowRight.on('pointerdown', toggleShip);
 
-        container.add([frame, selectTitle, shipImg, shipName, arrowLeft, arrowRight]);
+        container.add([frame, neonBorder, neonBorderInner, selectTitle, shipImg, shipName, arrowLeft, arrowRight]);
+        return container;
     }
 
     fitShipPreview(shipImg, isPortrait) {
@@ -433,21 +512,23 @@ class MenuScene extends Phaser.Scene {
             padding: { left: 8, right: 8, top: 4, bottom: 4 }
         }).setOrigin(0.5);
 
-        // 3. Tùy chọn Điều khiển
-        const ctrlLabel = this.add.text(-120, 60, '🎮 Điều khiển:', {
+        // 3. Phím tắt điều khiển
+        const ctrlLabel = this.add.text(-120, 60, '⌨️ Phím tắt:', {
             fontFamily: 'Rajdhani, sans-serif',
             fontSize: '16px',
             fontWeight: '700',
             color: '#ffffff'
         });
 
-        const ctrlInfo = this.add.text(60, 70, 'TỰ ĐỘNG', {
+        const ctrlInfo = this.add.text(60, 70, 'PC: WASD + Chuột + Space + E\nMobile: Cần gạt + Bắn + E', {
             fontFamily: 'Orbitron, sans-serif',
-            fontSize: '12px',
+            fontSize: '10px',
             fontWeight: '800',
             color: '#ffcc00',
             backgroundColor: '#1e293b',
-            padding: { left: 8, right: 8, top: 4, bottom: 4 }
+            padding: { left: 8, right: 8, top: 4, bottom: 4 },
+            align: 'center',
+            wordWrap: { width: 190 }
         }).setOrigin(0.5);
 
         // Nút Đóng
@@ -475,6 +556,11 @@ class MenuScene extends Phaser.Scene {
         if (this.currentModal) this.currentModal.destroy();
 
         const { width, height } = this.scale;
+        const isCompact = width <= 768;
+        const boxWidth = Math.min(320, width - 28);
+        const boxHeight = Math.min(380, height - 36);
+        const left = -boxWidth / 2;
+        const top = -boxHeight / 2;
         const modal = this.add.container(width / 2, height / 2).setDepth(50);
         this.currentModal = modal;
 
@@ -483,44 +569,42 @@ class MenuScene extends Phaser.Scene {
 
         const box = this.add.graphics();
         box.fillStyle(0x0a1628, 0.95);
-        box.fillRoundedRect(-160, -190, 320, 380, 16);
+        box.fillRoundedRect(left, top, boxWidth, boxHeight, 16);
         box.lineStyle(2, 0xffcc00, 0.9);
-        box.strokeRoundedRect(-160, -190, 320, 380, 16);
+        box.strokeRoundedRect(left, top, boxWidth, boxHeight, 16);
 
         const title = this.add.text(0, -155, 'ℹ️ HƯỚNG DẪN & THÔNG TIN', {
             fontFamily: 'Orbitron, sans-serif',
-            fontSize: '15px',
+            fontSize: isCompact ? '12px' : '15px',
             fontWeight: '900',
             color: '#ffcc00'
-        }).setOrigin(0.5);
+        }).setOrigin(0.5).setPosition(0, top + (isCompact ? 22 : 35));
 
-        const infoContent = 
-            '🚀 PHI THUYỀN KHÔNG GIAN\n\n' +
-            '🔮 NGỌC THU PHỤC: Bấm [E] để phóng\n' +
-            '   Tia Sét hút Ngọc (Tối đa 3 ĐỒNG MINH).\n\n' +
-            '🛰️ VỆ TINH: Bắn nổ để kích hoạt\n' +
-            '   Auto Rocket tìm diệt mỗi 3s.\n\n' +
-            '⚡ CHIÊU CUỐI:\n' +
-            '   P1 ALPHA: Tia Laze Blue khổng lồ.\n' +
-            '   P2 PHANTOM: Phóng SÉT giáng đối thủ.\n\n' +
-            '🌍 3 ROUND THÁCH THỨC (20 Wave/Boss):\n' +
-            '   R1: Không gian - Boss Trùm.\n' +
-            '   R2: Top-down - Enemy2 + Boss Phantom.\n' +
-            '   R3: Mưa thiên thạch + Enemy3\n' +
-            '   phun cục lửa, số lượng cực đông!\n\n' +
-            '📱 Mobile: Cần gạt + Nút bắn + [E]\n' +
-            '💻 PC: WASD + Chuột + Space + [E]\n\n' +
-            '🏢 Nhà phát triển: TP Dragonsoft\n' +
+        const infoContent =
+            '🚀 HÀNH TRÌNH MIỀN ĐẤT HỨA\n\n' +
+            'Trái Đất đang lụi tàn. Những phi hành đoàn\n' +
+            'cuối cùng lên đường tìm Miền Đất Hứa\n' +
+            'ở nơi xa nhất giữa vũ trụ bao la.\n\n' +
+            'Nhưng bóng tối đã thức tỉnh. Quái vật không\n' +
+            'gian tràn ra từ các hành tinh xa lạ, chặn\n' +
+            'đường đoàn tàu và săn đuổi phi thuyền.\n\n' +
+            'Hãy chiến đấu qua từng vòng sóng kẻ thù,\n' +
+            'giải cứu đồng minh và vượt qua những con Boss\n' +
+            'khổng lồ để mở lối đến Miền Đất Hứa.\n\n' +
+            'Mỗi trận chiến là một bước gần hơn tới\n' +
+            'ngôi nhà mới của nhân loại.\n\n' +
+            '🏢 TP Dragonsoft\n' +
             '© Copyright @2026 TP Dragonsoft';
 
         const infoText = this.add.text(0, -15, infoContent, {
             fontFamily: 'Rajdhani, sans-serif',
-            fontSize: '13.5px',
+            fontSize: isCompact ? '10.5px' : '13.5px',
             fontWeight: '600',
             color: '#e2e8f0',
             align: 'left',
-            lineSpacing: 2
-        }).setOrigin(0.5);
+            lineSpacing: isCompact ? 0 : 2,
+            wordWrap: { width: boxWidth - 28 }
+        }).setOrigin(0, 0).setPosition(left + 14, top + (isCompact ? 42 : 65));
 
         const btnClose = this.add.text(0, 150, 'ĐÃ HIỂU ✓', {
             fontFamily: 'Orbitron, sans-serif',
@@ -540,6 +624,7 @@ class MenuScene extends Phaser.Scene {
     }
 
     update() {
+        this.animateShipNeonBorder();
         const { height } = this.scale;
         if (this.stars) {
             for (let star of this.stars) {
@@ -550,6 +635,46 @@ class MenuScene extends Phaser.Scene {
                 }
             }
         }
+    }
+
+    animateShipNeonBorder() {
+        if (!this.shipNeonBorders || !this.shipNeonBounds) return;
+
+        const { left, top, width, height } = this.shipNeonBounds;
+        const perimeter = (width + height) * 2;
+        const pointAt = (distance) => {
+            const position = ((distance % perimeter) + perimeter) % perimeter;
+            if (position < width) return { x: left + position, y: top };
+            if (position < width + height) return { x: left + width, y: top + position - width };
+            if (position < width * 2 + height) return { x: left + width - (position - width - height), y: top + height };
+            return { x: left, y: top + height - (position - width * 2 - height) };
+        };
+
+        const drawTravelingLight = (graphics, bounds, head, color) => {
+            const borderPerimeter = (bounds.width + bounds.height) * 2;
+            const tail = 92;
+            const drawPath = (lineWidth, alpha) => {
+                graphics.lineStyle(lineWidth, color, alpha);
+                graphics.beginPath();
+                let point = pointAt(head - tail);
+                graphics.moveTo(point.x, point.y);
+                for (let i = 1; i <= 18; i++) {
+                    point = pointAt(head - tail + (tail * i) / 18);
+                    graphics.lineTo(point.x, point.y);
+                }
+                graphics.strokePath();
+            };
+
+            graphics.clear();
+            drawPath(10, 0.14);
+            drawPath(3, 0.92);
+            return (head + borderPerimeter) % borderPerimeter;
+        };
+
+        const firstHead = (this.time.now * 0.14) % perimeter;
+        const secondHead = (perimeter - this.time.now * 0.11) % perimeter;
+        drawTravelingLight(this.shipNeonBorders[0], this.shipNeonBounds, firstHead, 0x00f0ff);
+        drawTravelingLight(this.shipNeonBorders[1], this.shipNeonBounds, secondHead, 0x8b5cf6);
     }
 }
 
