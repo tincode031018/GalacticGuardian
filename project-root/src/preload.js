@@ -640,7 +640,7 @@ class PreloadScene extends Phaser.Scene {
         const offset = 8; // khoảng cách giữa tâm cung ngoài và tâm cung trong
         const angO = Math.PI * 0.46; // nửa góc cung ngoài
         const angI = Math.PI * 0.44; // nửa góc cung trong
-        const tipLen = 10;           // chiều dài mũi nhọn bóp ra từ 2 đầu
+        const tipLen = 7;            // chiều dài mũi nhọn TAM GIÁC sắc hoắc (đỉnh đẩy ra ngoài)
 
         // 2 đầu của các cung (biên của thân lưỡi dao)
         const e1x = cx + outerR * Math.cos(-angO), e1y = cy + outerR * Math.sin(-angO); // đầu trên cung ngoài
@@ -648,32 +648,32 @@ class PreloadScene extends Phaser.Scene {
         const f1x = (cx - offset) + innerR * Math.cos(angI), f1y = cy + innerR * Math.sin(angI); // đầu dưới cung trong
         const f2x = (cx - offset) + innerR * Math.cos(-angI), f2y = cy + innerR * Math.sin(-angI); // đầu trên cung trong
 
-        // Mũi nhọn Ở TRÊN: bóp đoạn f2 -> e1 thành điểm nhọn (control point đẩy ra ngoài)
+        // Mũi nhọn Ở TRÊN: ĐỈNH TAM GIÁC đẩy ra ngoài đoạn cắt f2 -> e1 (theo pháp tuyến) → mũi nhọn hoắc
         let mx1 = (f2x + e1x) / 2, my1 = (f2y + e1y) / 2;
         let dx1 = e1x - f2x, dy1 = e1y - f2y, len1 = Math.hypot(dx1, dy1);
         let nx1 = -dy1 / len1, ny1 = dx1 / len1;
         if (nx1 * (mx1 - cx) + ny1 * (my1 - cy) < 0) { nx1 = -nx1; ny1 = -ny1; }
-        const tip1x = mx1 + nx1 * (tipLen / 2), tip1y = my1 + ny1 * (tipLen / 2);
-        const c1x = mx1 + nx1 * tipLen, c1y = my1 + ny1 * tipLen;
+        const tip1x = mx1 + nx1 * tipLen, tip1y = my1 + ny1 * tipLen;
 
-        // Mũi nhọn Ở DƯỚI: bóp đoạn e2 -> f1 thành điểm nhọn
+        // Mũi nhọn Ở DƯỚI: ĐỈNH TAM GIÁC đẩy ra ngoài đoạn cắt e2 -> f1 → mũi nhọn hoắc
         let mx2 = (e2x + f1x) / 2, my2 = (e2y + f1y) / 2;
         let dx2 = f1x - e2x, dy2 = f1y - e2y, len2 = Math.hypot(dx2, dy2);
         let nx2 = -dy2 / len2, ny2 = dx2 / len2;
         if (nx2 * (mx2 - cx) + ny2 * (my2 - cy) < 0) { nx2 = -nx2; ny2 = -ny2; }
-        const tip2x = mx2 + nx2 * (tipLen / 2), tip2y = my2 + ny2 * (tipLen / 2);
-        const c2x = mx2 + nx2 * tipLen, c2y = my2 + ny2 * tipLen;
+        const tip2x = mx2 + nx2 * tipLen, tip2y = my2 + ny2 * tipLen;
 
         ctxCB.save();
         ctxCB.beginPath();
         // Cung ngoài (mặt lồi) - từ đầu trên xuống đầu dưới
         ctxCB.arc(cx, cy, outerR, -angO, angO);
-        // Bóp đầu dưới thành mũi nhọn sắc bén
-        ctxCB.quadraticCurveTo(c2x, c2y, f1x, f1y);
+        // Bóp TAM GIÁC đầu dưới thành mũi nhọn hoắc
+        ctxCB.lineTo(tip2x, tip2y);
+        ctxCB.lineTo(f1x, f1y);
         // Cung trong (mặt lõm khoét vào như trăng khuyết)
         ctxCB.arc(cx - offset, cy, innerR, angI, -angI, true);
-        // Bóp đầu trên thành mũi nhọn sắc bén
-        ctxCB.quadraticCurveTo(c1x, c1y, e1x, e1y);
+        // Bóp TAM GIÁC đầu trên thành mũi nhọn hoắc
+        ctxCB.lineTo(tip1x, tip1y);
+        ctxCB.lineTo(e1x, e1y);
         ctxCB.closePath();
 
         // Gradient phát sáng rực rỡ từ lõi trắng neon ra viền xanh ngọc / Cyan
@@ -708,35 +708,37 @@ class PreloadScene extends Phaser.Scene {
         const gOffset = 22; // khoảng cách giữa tâm cung ngoài và tâm cung trong
         const gAngO = Math.PI * 0.46; // nửa góc cung ngoài
         const gAngI = Math.PI * 0.44; // nửa góc cung trong
-        const gTipLen = 24;           // chiều dài mũi nhọn
+        const gTipLen = 15;           // chiều dài mũi nhọn TAM GIÁC sắc hoắc
 
         const gE1x = gcx + gOuterR * Math.cos(-gAngO), gE1y = gcy + gOuterR * Math.sin(-gAngO);
         const gE2x = gcx + gOuterR * Math.cos(gAngO), gE2y = gcy + gOuterR * Math.sin(gAngO);
         const gF1x = (gcx - gOffset) + gInnerR * Math.cos(gAngI), gF1y = gcy + gInnerR * Math.sin(gAngI);
         const gF2x = (gcx - gOffset) + gInnerR * Math.cos(-gAngI), gF2y = gcy + gInnerR * Math.sin(-gAngI);
 
-        // Mũi nhọn trên: bóp đoạn gF2 -> gE1
+        // Mũi nhọn trên: ĐỈNH TAM GIÁC đẩy ra ngoài đoạn cắt gF2 -> gE1
         let gM1x = (gF2x + gE1x) / 2, gM1y = (gF2y + gE1y) / 2;
         let gD1x = gE1x - gF2x, gD1y = gE1y - gF2y, gLen1 = Math.hypot(gD1x, gD1y);
         let gN1x = -gD1y / gLen1, gN1y = gD1x / gLen1;
         if (gN1x * (gM1x - gcx) + gN1y * (gM1y - gcy) < 0) { gN1x = -gN1x; gN1y = -gN1y; }
-        const gTip1x = gM1x + gN1x * (gTipLen / 2), gTip1y = gM1y + gN1y * (gTipLen / 2);
-        const gC1x = gM1x + gN1x * gTipLen, gC1y = gM1y + gN1y * gTipLen;
+        const gTip1x = gM1x + gN1x * gTipLen, gTip1y = gM1y + gN1y * gTipLen;
 
-        // Mũi nhọn dưới: bóp đoạn gE2 -> gF1
+        // Mũi nhọn dưới: ĐỈNH TAM GIÁC đẩy ra ngoài đoạn cắt gE2 -> gF1
         let gM2x = (gE2x + gF1x) / 2, gM2y = (gE2y + gF1y) / 2;
         let gD2x = gF1x - gE2x, gD2y = gF1y - gE2y, gLen2 = Math.hypot(gD2x, gD2y);
         let gN2x = -gD2y / gLen2, gN2y = gD2x / gLen2;
         if (gN2x * (gM2x - gcx) + gN2y * (gM2y - gcy) < 0) { gN2x = -gN2x; gN2y = -gN2y; }
-        const gTip2x = gM2x + gN2x * (gTipLen / 2), gTip2y = gM2y + gN2y * (gTipLen / 2);
-        const gC2x = gM2x + gN2x * gTipLen, gC2y = gM2y + gN2y * gTipLen;
+        const gTip2x = gM2x + gN2x * gTipLen, gTip2y = gM2y + gN2y * gTipLen;
 
         ctxGC.save();
         ctxGC.beginPath();
         ctxGC.arc(gcx, gcy, gOuterR, -gAngO, gAngO);
-        ctxGC.quadraticCurveTo(gC2x, gC2y, gF1x, gF1y);
+        // Bóp TAM GIÁC đầu dưới thành mũi nhọn hoắc
+        ctxGC.lineTo(gTip2x, gTip2y);
+        ctxGC.lineTo(gF1x, gF1y);
         ctxGC.arc(gcx - gOffset, gcy, gInnerR, gAngI, -gAngI, true);
-        ctxGC.quadraticCurveTo(gC1x, gC1y, gE1x, gE1y);
+        // Bóp TAM GIÁC đầu trên thành mũi nhọn hoắc
+        ctxGC.lineTo(gTip1x, gTip1y);
+        ctxGC.lineTo(gE1x, gE1y);
         ctxGC.closePath();
 
         const gradGiant = ctxGC.createRadialGradient(gcx + 8, gcy, 3, gcx, gcy, gOuterR);
@@ -760,6 +762,113 @@ class PreloadScene extends Phaser.Scene {
 
         ctxGC.restore();
         giantCrescent.refresh();
+
+        // 12. LƯỠI LIỀM LỬA ĐỎ (ULTIMATE P3 - RED FIRE CRESCENT BLADES - 2 đầu nhọn hoắc + đốm lửa)
+        this.createFireCrescentTexture('bullet_crescent_blade_fire', 44);
+        this.createFireCrescentTexture('bullet_giant_crescent_fire', 110);
+    }
+
+    /**
+     * Tạo texture lưỡi liềm lửa đỏ (Red Fire Crescent Blade) cho ULTIMATE phi thuyền 3.
+     * - Hình dạng TAM GIÁC mũi nhọn hoắc ở cả 2 đầu
+     * - Lõi lửa trắng nóng → vàng → cam → đỏ rực
+     * - Đốm lửa nhảy múa đọc theo mặt lồi của lưỡi
+     */
+    createFireCrescentTexture(key, size) {
+        const cv = this.textures.createCanvas(key, size, size);
+        const ctx = cv.context;
+        const cxf = size / 2, cyf = size / 2;
+        const outerR = size * 0.43;
+        const innerR = size * 0.30;
+        const offset = size * 0.18;
+        const angO = Math.PI * 0.46;
+        const angI = Math.PI * 0.44;
+        const spikeLen = Math.round(size * 0.16);
+
+        const e1x = cxf + outerR * Math.cos(-angO), e1y = cyf + outerR * Math.sin(-angO);
+        const e2x = cxf + outerR * Math.cos(angO), e2y = cyf + outerR * Math.sin(angO);
+        const f1x = (cxf - offset) + innerR * Math.cos(angI), f1y = cyf + innerR * Math.sin(angI);
+        const f2x = (cxf - offset) + innerR * Math.cos(-angI), f2y = cyf + innerR * Math.sin(-angI);
+
+        // Mũi nhọn hoắc trên + dưới (đỉnh TAM GIÁC đẩy ra ngoài theo pháp tuyến đoạn cắt)
+        let m1x = (f2x + e1x) / 2, m1y = (f2y + e1y) / 2;
+        let d1x = e1x - f2x, d1y = e1y - f2y, l1 = Math.hypot(d1x, d1y);
+        let n1x = -d1y / l1, n1y = d1x / l1;
+        if (n1x * (m1x - cxf) + n1y * (m1y - cyf) < 0) { n1x = -n1x; n1y = -n1y; }
+        const t1x = m1x + n1x * spikeLen, t1y = m1y + n1y * spikeLen;
+
+        let m2x = (e2x + f1x) / 2, m2y = (e2y + f1y) / 2;
+        let d2x = f1x - e2x, d2y = f1y - e2y, l2 = Math.hypot(d2x, d2y);
+        let n2x = -d2y / l2, n2y = d2x / l2;
+        if (n2x * (m2x - cxf) + n2y * (m2y - cyf) < 0) { n2x = -n2x; n2y = -n2y; }
+        const t2x = m2x + n2x * spikeLen, t2y = m2y + n2y * spikeLen;
+
+        // Thân lưỡi liềm lửa (đường viền TAM GIÁC nhọn hoắc 2 đầu)
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cxf, cyf, outerR, -angO, angO);
+        ctx.lineTo(t2x, t2y);
+        ctx.lineTo(f1x, f1y);
+        ctx.arc(cxf - offset, cyf, innerR, angI, -angI, true);
+        ctx.lineTo(t1x, t1y);
+        ctx.lineTo(e1x, e1y);
+        ctx.closePath();
+
+        // Lõi lửa: trắng nóng → vàng → cam → đỏ rực
+        const gradFire = ctx.createRadialGradient(cxf + 3, cyf, 1, cxf, cyf, outerR + spikeLen * 0.8);
+        gradFire.addColorStop(0, '#ffffff');
+        gradFire.addColorStop(0.2, '#ffe680');
+        gradFire.addColorStop(0.45, '#ff9d00');
+        gradFire.addColorStop(0.75, '#ff3b00');
+        gradFire.addColorStop(1, 'rgba(200, 10, 0, 0.35)');
+        ctx.fillStyle = gradFire;
+        ctx.fill();
+
+        // Viền trắng nóng cho lưỡi
+        ctx.strokeStyle = '#fff3c4';
+        ctx.lineWidth = size > 60 ? 3 : 1.8;
+        ctx.stroke();
+
+        // Khắc lại mép trong (mặt lõm) bằng đỏ sẫm tạo chiều sâu lưỡi dao
+        ctx.strokeStyle = 'rgba(150, 0, 0, 0.85)';
+        ctx.lineWidth = size > 60 ? 2.6 : 1.5;
+        ctx.beginPath();
+        ctx.arc(cxf - offset, cyf, innerR, angI, -angI, true);
+        ctx.stroke();
+
+        // Đốm lửa nhảy múa dọc theo mặt lồi ngoài (tam giác lửa)
+        const flameCount = size > 60 ? 9 : 7;
+        const baseFlame = size > 60 ? 11 : 5;
+        for (let i = 0; i < flameCount; i++) {
+            const t = -angO * 0.85 + (angO * 1.7) * (i / (flameCount - 1));
+            const flameLen = (i % 2 === 0) ? baseFlame : baseFlame * 0.6;
+            ctx.fillStyle = (i % 2 === 0) ? '#ff7a00' : '#ffb933';
+            ctx.globalAlpha = 0.9;
+            ctx.beginPath();
+            ctx.moveTo(cxf + outerR * Math.cos(t - 0.09), cyf + outerR * Math.sin(t - 0.09));
+            ctx.lineTo(cxf + (outerR + flameLen) * Math.cos(t), cyf + (outerR + flameLen) * Math.sin(t));
+            ctx.lineTo(cxf + outerR * Math.cos(t + 0.09), cyf + outerR * Math.sin(t + 0.09));
+            ctx.closePath();
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+
+        // Than hồng rực ở đúng 2 mũi nhọn
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(t1x, t1y, size > 60 ? 3 : 1.8, 0, Math.PI * 2);
+        ctx.arc(t2x, t2y, size > 60 ? 3 : 1.8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Ánh than hồng men theo mép trong
+        ctx.fillStyle = 'rgba(255, 210, 90, 0.9)';
+        ctx.beginPath();
+        ctx.arc(cxf - offset + innerR * Math.cos(Math.PI * 0.1), cyf + innerR * Math.sin(Math.PI * 0.1), size > 60 ? 2.6 : 1.5, 0, Math.PI * 2);
+        ctx.arc(cxf - offset + innerR * Math.cos(-Math.PI * 0.1), cyf + innerR * Math.sin(-Math.PI * 0.1), size > 60 ? 2.6 : 1.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+        cv.refresh();
     }
 
     generateParticleTextures() {

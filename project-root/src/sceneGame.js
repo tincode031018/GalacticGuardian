@@ -39,6 +39,8 @@ class GameScene extends Phaser.Scene {
         this.isThunderActive = false; // ULT SÉT (Phi thuyền 2)
         this.thunderTimer = null;
         this.thunderStrikeCount = 0;
+        this.isCrescentStormActive = false;
+        this.crescentStormBlades = []; // Các lưỡi liềm lửa đang bay (để đổ lửa theo đuôi)
         // KHIÊN ĐIỆN PHẢN ĐÒN (15s)
         this.electricShieldTimer = 0;
         this.electricShieldVisual = null;
@@ -2528,7 +2530,7 @@ class GameScene extends Phaser.Scene {
      * TUYỆT CHIÊU ULTIMATE - PHÂN LOẠI THEO PHI THUYỀN:
      * - P1 (CHIẾN HẠM ALPHA)    : Tia Laze Khổng Lồ Blue
      * - P2 (CHIẾN HẠM PHANTOM)  : THUNDER STRIKE - Phóng Sét giáng xuống toàn màn hình
-     * - P3 (CHIẾN HẠM VẦNG NGUYỆT): BÃO ĐAO TRĂNG KHUYẾT - Phóng đại bão đao trăng tỏa 360 độ
+     * - P3 (CHIẾN HẠM VẦNG NGUYỆT): BÃO LƯỠI LIỀM LỬA ĐỎ - Tỏa quanh bản thân các lưỡi liềm lửa đỏ bắn 360 độ
      */
     triggerUltimateAttack() {
         if (this.isGameOver || !this.player || !this.player.active) return;
@@ -2544,33 +2546,39 @@ class GameScene extends Phaser.Scene {
     }
 
     /**
-     * 🌙 BÃO ĐAO TRĂNG KHUYẾT (ULTI PHI THUYỀN 3 - CRESCENT BLADE STORM):
-     * Phóng ra 18 đại vầng trăng khuyết xoay tít tỏa rộng 360 độ hủy diệt toàn bộ đạn địch và chém nát kẻ thù
+     * 🔥 BÃO LƯỠI LIỀM LỬA ĐỎ (ULTI PHI THUYỀN 3 - RED FIRE CRESCENT STORM):
+     * Tỏa xung quanh BẢN THÂN ra các lưỡi liềm LỬA ĐỎ bắn về mọi hướng,
+     * mỗi lưỡi bốc cháy rực, quét sạch đạn địch và thiêu rụi kẻ thù.
      */
     triggerCrescentBladeStorm() {
         this.player.ultimateEnergy = 0;
         this.isCrescentStormActive = true;
+        this.crescentStormBlades = []; // Reset danh sách lưỡi liềm đang bay (để đổ lửa theo đuôi)
 
         window.soundFX.playUltimate();
         window.soundFX.playBladeSlash();
         this.cameras.main.shake(350, 0.016);
-        this.cameras.main.flash(260, 0, 255, 230);
+        this.cameras.main.flash(260, 255, 60, 30); // Lóe lửa đỏ cam
 
         const { width, height } = this.scale;
         const px = this.player.x;
         const py = this.player.y;
-        this.showFloatingText(width / 2, height / 2, '🌙 BÃO ĐAO TRĂNG KHUYẾT! 🌙', '#00ffea');
+        this.showFloatingText(width / 2, height / 2, '🔥 BÃO LƯỠI LIỀM LỬA! 🔥', '#ff5533');
+
+        // Vụ nổ lửa bùng lên quanh phi thuyền khi phóng tuyệt chiêu
+        this.fireEmitter.explode(46, px, py);
+        this.sparkEmitter.explode(64, px, py);
 
         // Xóa toàn bộ đạn địch hiện hữu
         this.enemyBullets.getChildren().slice().forEach(b => {
             if (b.active) b.destroy();
         });
 
-        // 18 đại đao trăng khuyết phóng tỏa ra mọi hướng
+        // 18 đại lưỡi liềm LỬA ĐỎ phóng tỏa ra mọi hướng
         const bladesCount = 18;
         for (let i = 0; i < bladesCount; i++) {
             const angle = (Math.PI * 2 / bladesCount) * i;
-            const blade = this.playerBullets.create(px, py, 'bullet_giant_crescent');
+            const blade = this.playerBullets.create(px, py, 'bullet_giant_crescent_fire');
             if (blade) {
                 blade.setDisplaySize(72, 72);
                 blade.setDepth(23);
@@ -2580,6 +2588,7 @@ class GameScene extends Phaser.Scene {
                 blade.setAngularVelocity(1080); // Xoay như bão lốc
                 const speed = 520;
                 blade.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+                this.crescentStormBlades.push(blade);
 
                 // Tự tiêu biến sau 2.2s
                 this.time.delayedCall(2200, () => {
@@ -2594,7 +2603,7 @@ class GameScene extends Phaser.Scene {
             window.soundFX.playBladeSlash();
             for (let i = 0; i < bladesCount; i++) {
                 const angle = (Math.PI * 2 / bladesCount) * i + (Math.PI / bladesCount);
-                const blade = this.playerBullets.create(this.player.x, this.player.y, 'bullet_crescent_blade');
+                const blade = this.playerBullets.create(this.player.x, this.player.y, 'bullet_crescent_blade_fire');
                 if (blade) {
                     blade.setDisplaySize(54, 54);
                     blade.setDepth(23);
@@ -2604,6 +2613,7 @@ class GameScene extends Phaser.Scene {
                     blade.setAngularVelocity(-900);
                     const speed = 580;
                     blade.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+                    this.crescentStormBlades.push(blade);
 
                     this.time.delayedCall(2000, () => {
                         if (blade && blade.active) blade.destroy();
@@ -3036,6 +3046,18 @@ class GameScene extends Phaser.Scene {
                     this.fireEmitter.explode(1, m.x, m.y);
                 }
             });
+        }
+
+        // 1.62 Vệt lửa bốc cháy theo các lưỡi liềm ULTIMATE P3 (Red Fire Crescent Storm)
+        if (this.crescentStormBlades && this.crescentStormBlades.length) {
+            const aliveBlades = [];
+            this.crescentStormBlades.forEach(b => {
+                if (!b || !b.active) return;
+                aliveBlades.push(b);
+                if (Math.random() < 0.55) this.fireEmitter.explode(1, b.x, b.y);
+                if (Math.random() < 0.2) this.sparkEmitter.explode(1, b.x, b.y);
+            });
+            this.crescentStormBlades = aliveBlades;
         }
 
         // 1.7 HIỆU ỨNG KHÓI ĐEN & LỬA BỐC CHÁY KHI NGƯỜI CHƠI HOẶC BOSS CÒN <= 1/3 MÁU
