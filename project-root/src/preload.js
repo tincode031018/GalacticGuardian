@@ -238,6 +238,22 @@ window.soundFX = {
         gain.connect(this.ctx.destination);
         osc.start(now);
         osc.stop(now + 0.22);
+    },
+    playBladeSlash() {
+        if (this.muted || !this.ctx) return;
+        this.resume();
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(1450, now);
+        osc.frequency.exponentialRampToValueAtTime(280, now + 0.08);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.08);
     }
 };
 
@@ -301,6 +317,8 @@ class PreloadScene extends Phaser.Scene {
         this.load.image('player1b', 'assets/phithuyen/player1b.png' + cacheBust);
         this.load.image('player2a', 'assets/phithuyen/player2a.png' + cacheBust);
         this.load.image('player2b', 'assets/phithuyen/player2b.png' + cacheBust);
+        this.load.image('player3a', 'assets/phithuyen/player3a.png' + cacheBust);
+        this.load.image('player3b', 'assets/phithuyen/player3b.png' + cacheBust);
         this.load.image('enemy1a', 'assets/phithuyen/enemy1a.png' + cacheBust);
         this.load.image('enemy1b', 'assets/phithuyen/enemy1b.png' + cacheBust);
         this.load.image('enemy2a', 'assets/phithuyen/enemy2a.png' + cacheBust);
@@ -363,6 +381,8 @@ class PreloadScene extends Phaser.Scene {
             ['player1b', 'assets/phithuyen/player1b.png'],
             ['player2a', 'assets/phithuyen/player2a.png'],
             ['player2b', 'assets/phithuyen/player2b.png'],
+            ['player3a', 'assets/phithuyen/player3a.png'],
+            ['player3b', 'assets/phithuyen/player3b.png'],
             ['enemy1a', 'assets/phithuyen/enemy1a.png'],
             ['enemy1b', 'assets/phithuyen/enemy1b.png'],
             ['enemy2a', 'assets/phithuyen/enemy2a.png'],
@@ -609,6 +629,137 @@ class PreloadScene extends Phaser.Scene {
         ctxM.lineTo(42, 14);
         ctxM.stroke();
         meteorCv.refresh();
+
+        // 10. LƯỠI DAO VẦNG TRĂNG KHUYẾT (CRESCENT MOON BLADE - PLAYER 3)
+        const crescentCanvas = this.textures.createCanvas('bullet_crescent_blade', 44, 44);
+        const ctxCB = crescentCanvas.context;
+        const cx = 22;
+        const cy = 22;
+        const outerR = 19;
+        const innerR = 13;
+        const offset = 8; // khoảng cách giữa tâm cung ngoài và tâm cung trong
+        const angO = Math.PI * 0.46; // nửa góc cung ngoài
+        const angI = Math.PI * 0.44; // nửa góc cung trong
+        const tipLen = 10;           // chiều dài mũi nhọn bóp ra từ 2 đầu
+
+        // 2 đầu của các cung (biên của thân lưỡi dao)
+        const e1x = cx + outerR * Math.cos(-angO), e1y = cy + outerR * Math.sin(-angO); // đầu trên cung ngoài
+        const e2x = cx + outerR * Math.cos(angO), e2y = cy + outerR * Math.sin(angO);   // đầu dưới cung ngoài
+        const f1x = (cx - offset) + innerR * Math.cos(angI), f1y = cy + innerR * Math.sin(angI); // đầu dưới cung trong
+        const f2x = (cx - offset) + innerR * Math.cos(-angI), f2y = cy + innerR * Math.sin(-angI); // đầu trên cung trong
+
+        // Mũi nhọn Ở TRÊN: bóp đoạn f2 -> e1 thành điểm nhọn (control point đẩy ra ngoài)
+        let mx1 = (f2x + e1x) / 2, my1 = (f2y + e1y) / 2;
+        let dx1 = e1x - f2x, dy1 = e1y - f2y, len1 = Math.hypot(dx1, dy1);
+        let nx1 = -dy1 / len1, ny1 = dx1 / len1;
+        if (nx1 * (mx1 - cx) + ny1 * (my1 - cy) < 0) { nx1 = -nx1; ny1 = -ny1; }
+        const tip1x = mx1 + nx1 * (tipLen / 2), tip1y = my1 + ny1 * (tipLen / 2);
+        const c1x = mx1 + nx1 * tipLen, c1y = my1 + ny1 * tipLen;
+
+        // Mũi nhọn Ở DƯỚI: bóp đoạn e2 -> f1 thành điểm nhọn
+        let mx2 = (e2x + f1x) / 2, my2 = (e2y + f1y) / 2;
+        let dx2 = f1x - e2x, dy2 = f1y - e2y, len2 = Math.hypot(dx2, dy2);
+        let nx2 = -dy2 / len2, ny2 = dx2 / len2;
+        if (nx2 * (mx2 - cx) + ny2 * (my2 - cy) < 0) { nx2 = -nx2; ny2 = -ny2; }
+        const tip2x = mx2 + nx2 * (tipLen / 2), tip2y = my2 + ny2 * (tipLen / 2);
+        const c2x = mx2 + nx2 * tipLen, c2y = my2 + ny2 * tipLen;
+
+        ctxCB.save();
+        ctxCB.beginPath();
+        // Cung ngoài (mặt lồi) - từ đầu trên xuống đầu dưới
+        ctxCB.arc(cx, cy, outerR, -angO, angO);
+        // Bóp đầu dưới thành mũi nhọn sắc bén
+        ctxCB.quadraticCurveTo(c2x, c2y, f1x, f1y);
+        // Cung trong (mặt lõm khoét vào như trăng khuyết)
+        ctxCB.arc(cx - offset, cy, innerR, angI, -angI, true);
+        // Bóp đầu trên thành mũi nhọn sắc bén
+        ctxCB.quadraticCurveTo(c1x, c1y, e1x, e1y);
+        ctxCB.closePath();
+
+        // Gradient phát sáng rực rỡ từ lõi trắng neon ra viền xanh ngọc / Cyan
+        const gradBlade = ctxCB.createRadialGradient(cx + 3, cy, 1, cx, cy, outerR);
+        gradBlade.addColorStop(0, '#ffffff');
+        gradBlade.addColorStop(0.3, '#55ffff');
+        gradBlade.addColorStop(0.7, '#00b4d8');
+        gradBlade.addColorStop(1, 'rgba(0, 240, 255, 0.15)');
+        ctxCB.fillStyle = gradBlade;
+        ctxCB.fill();
+
+        ctxCB.strokeStyle = '#ffffff';
+        ctxCB.lineWidth = 1.8;
+        ctxCB.stroke();
+
+        // Thêm vệt năng lượng sắc lạnh tại đúng 2 mũi nhọn
+        ctxCB.fillStyle = '#ffffff';
+        ctxCB.beginPath();
+        ctxCB.arc(tip1x, tip1y, 1.8, 0, Math.PI * 2);
+        ctxCB.arc(tip2x, tip2y, 1.8, 0, Math.PI * 2);
+        ctxCB.fill();
+        ctxCB.restore();
+        crescentCanvas.refresh();
+
+        // 11. ĐẠI VẦNG TRĂNG KHUYẾT ULTIMATE (GIANT CRESCENT MOON BLADE)
+        const giantCrescent = this.textures.createCanvas('bullet_giant_crescent', 110, 110);
+        const ctxGC = giantCrescent.context;
+        const gcx = 55;
+        const gcy = 55;
+        const gOuterR = 50;
+        const gInnerR = 34;
+        const gOffset = 22; // khoảng cách giữa tâm cung ngoài và tâm cung trong
+        const gAngO = Math.PI * 0.46; // nửa góc cung ngoài
+        const gAngI = Math.PI * 0.44; // nửa góc cung trong
+        const gTipLen = 24;           // chiều dài mũi nhọn
+
+        const gE1x = gcx + gOuterR * Math.cos(-gAngO), gE1y = gcy + gOuterR * Math.sin(-gAngO);
+        const gE2x = gcx + gOuterR * Math.cos(gAngO), gE2y = gcy + gOuterR * Math.sin(gAngO);
+        const gF1x = (gcx - gOffset) + gInnerR * Math.cos(gAngI), gF1y = gcy + gInnerR * Math.sin(gAngI);
+        const gF2x = (gcx - gOffset) + gInnerR * Math.cos(-gAngI), gF2y = gcy + gInnerR * Math.sin(-gAngI);
+
+        // Mũi nhọn trên: bóp đoạn gF2 -> gE1
+        let gM1x = (gF2x + gE1x) / 2, gM1y = (gF2y + gE1y) / 2;
+        let gD1x = gE1x - gF2x, gD1y = gE1y - gF2y, gLen1 = Math.hypot(gD1x, gD1y);
+        let gN1x = -gD1y / gLen1, gN1y = gD1x / gLen1;
+        if (gN1x * (gM1x - gcx) + gN1y * (gM1y - gcy) < 0) { gN1x = -gN1x; gN1y = -gN1y; }
+        const gTip1x = gM1x + gN1x * (gTipLen / 2), gTip1y = gM1y + gN1y * (gTipLen / 2);
+        const gC1x = gM1x + gN1x * gTipLen, gC1y = gM1y + gN1y * gTipLen;
+
+        // Mũi nhọn dưới: bóp đoạn gE2 -> gF1
+        let gM2x = (gE2x + gF1x) / 2, gM2y = (gE2y + gF1y) / 2;
+        let gD2x = gF1x - gE2x, gD2y = gF1y - gE2y, gLen2 = Math.hypot(gD2x, gD2y);
+        let gN2x = -gD2y / gLen2, gN2y = gD2x / gLen2;
+        if (gN2x * (gM2x - gcx) + gN2y * (gM2y - gcy) < 0) { gN2x = -gN2x; gN2y = -gN2y; }
+        const gTip2x = gM2x + gN2x * (gTipLen / 2), gTip2y = gM2y + gN2y * (gTipLen / 2);
+        const gC2x = gM2x + gN2x * gTipLen, gC2y = gM2y + gN2y * gTipLen;
+
+        ctxGC.save();
+        ctxGC.beginPath();
+        ctxGC.arc(gcx, gcy, gOuterR, -gAngO, gAngO);
+        ctxGC.quadraticCurveTo(gC2x, gC2y, gF1x, gF1y);
+        ctxGC.arc(gcx - gOffset, gcy, gInnerR, gAngI, -gAngI, true);
+        ctxGC.quadraticCurveTo(gC1x, gC1y, gE1x, gE1y);
+        ctxGC.closePath();
+
+        const gradGiant = ctxGC.createRadialGradient(gcx + 8, gcy, 3, gcx, gcy, gOuterR);
+        gradGiant.addColorStop(0, '#ffffff');
+        gradGiant.addColorStop(0.25, '#70f0ff');
+        gradGiant.addColorStop(0.65, '#00a6fb');
+        gradGiant.addColorStop(1, 'rgba(0, 150, 255, 0.2)');
+        ctxGC.fillStyle = gradGiant;
+        ctxGC.fill();
+
+        ctxGC.strokeStyle = '#ffffff';
+        ctxGC.lineWidth = 3;
+        ctxGC.stroke();
+
+        // Vệt năng lượng sáng tại 2 mũi nhọn
+        ctxGC.fillStyle = '#ffffff';
+        ctxGC.beginPath();
+        ctxGC.arc(gTip1x, gTip1y, 2.6, 0, Math.PI * 2);
+        ctxGC.arc(gTip2x, gTip2y, 2.6, 0, Math.PI * 2);
+        ctxGC.fill();
+
+        ctxGC.restore();
+        giantCrescent.refresh();
     }
 
     generateParticleTextures() {

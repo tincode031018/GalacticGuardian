@@ -84,10 +84,11 @@ class MenuScene extends Phaser.Scene {
         const startGame = () => {
             window.soundFX.init();
             window.soundFX.playPowerup();
-            const isPortrait = this.scale.height >= this.scale.width;
-            const shipType = this.selectedShipBase + (isPortrait ? 'a' : 'b');
+            const roundNum = Number(this.selectedRound) || 1;
+            const isRoundPortrait = roundNum <= 2;
+            const shipType = this.selectedShipBase + (isRoundPortrait ? 'a' : 'b');
             document.body.classList.add('game-active');
-            this.scene.start('GameScene', { shipType: shipType, round: this.selectedRound });
+            this.scene.start('GameScene', { shipType: shipType, round: roundNum });
         };
 
         // 6. Nút Bắt Đầu (Start Button)
@@ -383,12 +384,26 @@ class MenuScene extends Phaser.Scene {
             ease: 'Sine.easeInOut'
         });
 
-        const shipName = this.add.text(0, 62, this.selectedShipBase === 'player1' ? 'CHIẾN HẠM ALPHA (P1)' : 'CHIẾN HẠM PHANTOM (P2)', {
+        const shipData = {
+            'player1': { name: 'CHIẾN HẠM ALPHA (P1)', sub: '⚡ TIA LAZE KHỔNG LỒ' },
+            'player2': { name: 'CHIẾN HẠM PHANTOM (P2)', sub: '⚡ THUNDER STRIKE' },
+            'player3': { name: 'CHIẾN HẠM VẦNG NGUYỆT (P3)', sub: '🌙 ĐAO TRĂNG KHUYẾT' }
+        };
+        const shipList = ['player1', 'player2', 'player3'];
+
+        const shipName = this.add.text(0, 58, (shipData[this.selectedShipBase] || shipData['player1']).name, {
             fontFamily: 'Orbitron, sans-serif',
-            fontSize: '14px',
+            fontSize: '13px',
             fontWeight: '800',
             color: '#ffffff'
         }).setOrigin(0.5).setShadow(0, 0, '#00f0ff', 8);
+
+        const shipSpecial = this.add.text(0, 76, (shipData[this.selectedShipBase] || shipData['player1']).sub, {
+            fontFamily: 'Rajdhani, sans-serif',
+            fontSize: '13px',
+            fontWeight: '700',
+            color: '#00ffcc'
+        }).setOrigin(0.5);
 
         const arrowLeft = this.add.text(-120, 0, '◀', {
             fontFamily: 'Orbitron, sans-serif',
@@ -407,15 +422,17 @@ class MenuScene extends Phaser.Scene {
         arrowRight.on('pointerover', () => arrowRight.setScale(1.2).setColor('#ffffff'));
         arrowRight.on('pointerout', () => arrowRight.setScale(1.0).setColor('#00f0ff'));
 
-        const toggleShip = () => {
+        const changeShip = (dir) => {
             const currentIsPortrait = this.scale.height >= this.scale.width;
-            if (this.selectedShipBase === 'player1') {
-                this.selectedShipBase = 'player2';
-                shipName.setText('CHIẾN HẠM PHANTOM (P2)');
-            } else {
-                this.selectedShipBase = 'player1';
-                shipName.setText('CHIẾN HẠM ALPHA (P1)');
-            }
+            let idx = shipList.indexOf(this.selectedShipBase);
+            if (idx === -1) idx = 0;
+            idx = (idx + dir + shipList.length) % shipList.length;
+            this.selectedShipBase = shipList[idx];
+
+            const info = shipData[this.selectedShipBase];
+            shipName.setText(info.name);
+            shipSpecial.setText(info.sub);
+
             const newKey = this.selectedShipBase + (currentIsPortrait ? 'a' : 'b');
             if (this.textures.exists(newKey)) {
                 shipImg.setTexture(newKey);
@@ -424,16 +441,21 @@ class MenuScene extends Phaser.Scene {
             window.soundFX.playLaser(1.5);
         };
 
-        arrowLeft.on('pointerdown', toggleShip);
-        arrowRight.on('pointerdown', toggleShip);
+        arrowLeft.on('pointerdown', () => changeShip(-1));
+        arrowRight.on('pointerdown', () => changeShip(1));
 
-        container.add([frame, neonBorder, neonBorderInner, selectTitle, shipImg, shipName, arrowLeft, arrowRight]);
+        container.add([frame, neonBorder, neonBorderInner, selectTitle, shipImg, shipName, shipSpecial, arrowLeft, arrowRight]);
         return container;
     }
 
     fitShipPreview(shipImg, isPortrait) {
         if (isPortrait) {
-            shipImg.setDisplaySize(95, 95);
+            // Scale theo chiều cao như trong game, giữ đúng tỉ lệ (không bóp méo)
+            const origW = shipImg.width || 64;
+            const origH = shipImg.height || 64;
+            const targetH = 95;
+            const targetW = (origW / origH) * targetH;
+            shipImg.setDisplaySize(targetW, targetH);
         } else {
             const origW = shipImg.width || 64;
             const origH = shipImg.height || 64;
@@ -543,18 +565,24 @@ class MenuScene extends Phaser.Scene {
             color: '#ffffff'
         });
 
-        const roundBtn = this.add.text(60, 112, `VÒNG ${this.selectedRound}`, {
+        const getRoundLabelText = (r) => {
+            if (r === 1) return 'V1: DỌC 📱';
+            if (r === 2) return 'V2: DỌC 📱';
+            return 'V3: NGANG 💻';
+        };
+
+        const roundBtn = this.add.text(60, 112, getRoundLabelText(this.selectedRound), {
             fontFamily: 'Orbitron, sans-serif',
-            fontSize: '12px',
+            fontSize: '11px',
             fontWeight: '800',
             color: '#ffcc00',
             backgroundColor: '#1e293b',
-            padding: { left: 10, right: 10, top: 4, bottom: 4 }
+            padding: { left: 8, right: 8, top: 4, bottom: 4 }
         }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
         roundBtn.on('pointerdown', () => {
             this.selectedRound = this.selectedRound >= 3 ? 1 : this.selectedRound + 1;
-            roundBtn.setText(`VÒNG ${this.selectedRound}`);
+            roundBtn.setText(getRoundLabelText(this.selectedRound));
             window.soundFX.playLaser(1.2);
         });
 

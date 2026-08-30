@@ -12,7 +12,13 @@ class GameScene extends Phaser.Scene {
     }
 
     init(data) {
-        this.selectedShipBase = data.shipType ? (data.shipType.startsWith('player2') ? 'player2' : 'player1') : 'player1';
+        if (data && data.shipType) {
+            if (data.shipType.startsWith('player3')) this.selectedShipBase = 'player3';
+            else if (data.shipType.startsWith('player2')) this.selectedShipBase = 'player2';
+            else this.selectedShipBase = 'player1';
+        } else {
+            this.selectedShipBase = 'player1';
+        }
         this.round = Number(data && data.round !== undefined ? data.round : 1) || 1; // HỆ THỐNG ROUND: 1 / 2 / 3
         this.score = 0;
         this.rescuedCount = 0;
@@ -50,13 +56,13 @@ class GameScene extends Phaser.Scene {
         this.isHealingActive = false;
         this.bossHealTimer = null;
 
-        // Xác định hướng màn hình
-        this.isPortrait = this.scale.height >= this.scale.width;
+        // Xác định hướng màn hình: Vòng 1 và 2 = Dọc (Portrait), Vòng 3 = Ngang (Landscape)
+        this.isPortrait = this.round <= 2;
     }
 
     create() {
         const { width, height } = this.scale;
-        this.isPortrait = height >= width;
+        this.isPortrait = this.round <= 2;
         window.soundFX.playMusic(`sound/round${this.round}.mp3`);
 
         // Bật hệ thống vật lý Arcade
@@ -1391,55 +1397,70 @@ class GameScene extends Phaser.Scene {
         if (now - this.lastFired < this.fireRate) return;
         this.lastFired = now;
 
-        const bulletTexture = this.isPortrait ? 'bullet_player_v' : 'bullet_player_h';
+        const isP3 = this.selectedShipBase === 'player3';
+        const bulletTexture = isP3 ? 'bullet_crescent_blade' : (this.isPortrait ? 'bullet_player_v' : 'bullet_player_h');
         const x = this.player.x;
         const y = this.player.y;
-        const bSpeed = 980;
+        const bSpeed = isP3 ? 1020 : 980;
 
         if (this.isPortrait) {
             if (this.weaponLevel === 1) {
-                this.createPlayerBullet(x, y - 28, 0, -bSpeed, bulletTexture);
+                this.createPlayerBullet(x, y - 28, 0, -bSpeed, bulletTexture, isP3, 34);
             } else if (this.weaponLevel === 2) {
-                this.createPlayerBullet(x - 15, y - 28, 0, -bSpeed, bulletTexture);
-                this.createPlayerBullet(x + 15, y - 28, 0, -bSpeed, bulletTexture);
+                this.createPlayerBullet(x - 16, y - 28, isP3 ? -50 : 0, -bSpeed, bulletTexture, isP3, 36);
+                this.createPlayerBullet(x + 16, y - 28, isP3 ? 50 : 0, -bSpeed, bulletTexture, isP3, 36);
             } else if (this.weaponLevel === 3) {
-                this.createPlayerBullet(x, y - 28, 0, -bSpeed, bulletTexture);
-                this.createPlayerBullet(x - 18, y - 28, -120, -(bSpeed - 30), bulletTexture);
-                this.createPlayerBullet(x + 18, y - 28, 120, -(bSpeed - 30), bulletTexture);
+                this.createPlayerBullet(x, y - 30, 0, -bSpeed, bulletTexture, isP3, 38);
+                this.createPlayerBullet(x - 20, y - 26, -130, -(bSpeed - 30), bulletTexture, isP3, 36);
+                this.createPlayerBullet(x + 20, y - 26, 130, -(bSpeed - 30), bulletTexture, isP3, 36);
             } else {
-                this.createPlayerBullet(x - 22, y - 28, -90, -(bSpeed + 20), bulletTexture);
-                this.createPlayerBullet(x - 8, y - 30, 0, -(bSpeed + 70), bulletTexture);
-                this.createPlayerBullet(x + 8, y - 30, 0, -(bSpeed + 70), bulletTexture);
-                this.createPlayerBullet(x + 22, y - 28, 90, -(bSpeed + 20), bulletTexture);
+                this.createPlayerBullet(x - 26, y - 26, -200, -(bSpeed - 20), bulletTexture, isP3, 40);
+                this.createPlayerBullet(x - 10, y - 30, -70, -(bSpeed + 50), bulletTexture, isP3, 42);
+                this.createPlayerBullet(x, y - 32, 0, -(bSpeed + 80), bulletTexture, isP3, 44);
+                this.createPlayerBullet(x + 10, y - 30, 70, -(bSpeed + 50), bulletTexture, isP3, 42);
+                this.createPlayerBullet(x + 26, y - 26, 200, -(bSpeed - 20), bulletTexture, isP3, 40);
             }
         } else {
             if (this.weaponLevel === 1) {
-                this.createPlayerBullet(x + 28, y, bSpeed, 0, bulletTexture);
+                this.createPlayerBullet(x + 28, y, bSpeed, 0, bulletTexture, isP3, 34);
             } else if (this.weaponLevel === 2) {
-                this.createPlayerBullet(x + 28, y - 15, bSpeed, 0, bulletTexture);
-                this.createPlayerBullet(x + 28, y + 15, bSpeed, 0, bulletTexture);
+                this.createPlayerBullet(x + 28, y - 16, bSpeed, isP3 ? -50 : 0, bulletTexture, isP3, 36);
+                this.createPlayerBullet(x + 28, y + 16, bSpeed, isP3 ? 50 : 0, bulletTexture, isP3, 36);
             } else if (this.weaponLevel === 3) {
-                this.createPlayerBullet(x + 28, y, bSpeed, 0, bulletTexture);
-                this.createPlayerBullet(x + 28, y - 18, (bSpeed - 30), -120, bulletTexture);
-                this.createPlayerBullet(x + 28, y + 18, (bSpeed - 30), 120, bulletTexture);
+                this.createPlayerBullet(x + 30, y, bSpeed, 0, bulletTexture, isP3, 38);
+                this.createPlayerBullet(x + 26, y - 20, (bSpeed - 30), -130, bulletTexture, isP3, 36);
+                this.createPlayerBullet(x + 26, y + 20, (bSpeed - 30), 130, bulletTexture, isP3, 36);
             } else {
-                this.createPlayerBullet(x + 28, y - 22, (bSpeed + 20), -90, bulletTexture);
-                this.createPlayerBullet(x + 30, y - 8, (bSpeed + 70), 0, bulletTexture);
-                this.createPlayerBullet(x + 30, y + 8, (bSpeed + 70), 0, bulletTexture);
-                this.createPlayerBullet(x + 28, y + 22, (bSpeed + 20), 90, bulletTexture);
+                this.createPlayerBullet(x + 26, y - 26, (bSpeed - 20), -200, bulletTexture, isP3, 40);
+                this.createPlayerBullet(x + 30, y - 10, (bSpeed + 50), -70, bulletTexture, isP3, 42);
+                this.createPlayerBullet(x + 32, y, (bSpeed + 80), 0, bulletTexture, isP3, 44);
+                this.createPlayerBullet(x + 30, y + 10, (bSpeed + 50), 70, bulletTexture, isP3, 42);
+                this.createPlayerBullet(x + 26, y + 26, (bSpeed - 20), 200, bulletTexture, isP3, 40);
             }
         }
 
-        window.soundFX.playLaser();
+        if (isP3) {
+            window.soundFX.playBladeSlash();
+        } else {
+            window.soundFX.playLaser();
+        }
     }
 
-    createPlayerBullet(x, y, vx, vy, textureKey) {
+    createPlayerBullet(x, y, vx, vy, textureKey, isCrescent = false, size = null) {
         const bullet = this.playerBullets.create(x, y, textureKey);
         if (bullet) {
             bullet.setDepth(18);
             bullet.setBlendMode('ADD');
             bullet.setVelocity(vx, vy);
+            if (isCrescent) {
+                bullet.isCrescent = true;
+                bullet.damage = 18;
+                const s = size || 36;
+                bullet.setDisplaySize(s, s);
+                bullet.setAngularVelocity(720);
+            }
         }
+        return bullet;
     }
 
     /**
@@ -2052,10 +2073,59 @@ class GameScene extends Phaser.Scene {
             }
         });
 
-        // Nền mới cho Round 2/3 (bay nhìn từ trên xuống)
+        const wasPortrait = this.isPortrait;
+        this.isPortrait = this.round <= 2; // Vòng 1 và 2 = Màn hình Dọc, Vòng 3 = Màn hình Ngang
+
+        // Xử lý chuyển hướng màn hình (ví dụ: Round 2 dọc -> Round 3 ngang)
+        if (wasPortrait !== this.isPortrait) {
+            if (this.player && this.player.active) {
+                const newKey = this.getPlayerSpriteKey();
+                if (newKey && this.textures.exists(newKey)) {
+                    this.player.setTexture(newKey);
+                    this.fitPlayerSize();
+                }
+                const targetX = this.isPortrait ? width / 2 : 110;
+                const targetY = this.isPortrait ? height - 120 : height / 2;
+                this.tweens.add({
+                    targets: this.player,
+                    x: targetX,
+                    y: targetY,
+                    duration: 600,
+                    ease: 'Cubic.easeOut'
+                });
+
+                if (this.thrusterEmitter) {
+                    this.thrusterEmitter.stopFollow();
+                    const offsetX = this.isPortrait ? 0 : -28;
+                    const offsetY = this.isPortrait ? 28 : 0;
+                    this.thrusterEmitter.startFollow(this.player, offsetX, offsetY);
+                }
+            }
+
+            // Chuyển đổi sprite đồng minh sang hướng tương ứng
+            if (this.allies) {
+                this.allies.getChildren().forEach(drone => {
+                    if (drone && drone.active) {
+                        const newDroneKey = this.getEnemySpriteKey(drone.enemyBase);
+                        if (newDroneKey && this.textures.exists(newDroneKey)) {
+                            drone.setTexture(newDroneKey);
+                            if (this.isPortrait) {
+                                drone.setDisplaySize(36, 36);
+                                drone.setFlipY(false);
+                            } else {
+                                drone.setDisplaySize(42, 32);
+                                drone.setFlipX(false);
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Nền mới cho Round 2/3 (bay nhìn từ trên xuống hoặc cuộn ngang)
         this.applyRoundBackdrop();
 
-        // Round 3: kích hoạt mưa thiên thạch
+        // Round 3: kích hoạt mưa thiên thạch (bay ngang từ phải sang trái)
         if (nextRound >= 3) {
             this.startMeteorShower();
         }
@@ -2456,18 +2526,95 @@ class GameScene extends Phaser.Scene {
 
     /**
      * TUYỆT CHIÊU ULTIMATE - PHÂN LOẠI THEO PHI THUYỀN:
-     * - P1 (CHIẾN HẠM ALPHA)   : Tia Laze Khổng Lồ Blue
-     * - P2 (CHIẾN HẠM PHANTOM) : THUNDER STRIKE - Phóng Sét giáng xuống toàn màn hình
+     * - P1 (CHIẾN HẠM ALPHA)    : Tia Laze Khổng Lồ Blue
+     * - P2 (CHIẾN HẠM PHANTOM)  : THUNDER STRIKE - Phóng Sét giáng xuống toàn màn hình
+     * - P3 (CHIẾN HẠM VẦNG NGUYỆT): BÃO ĐAO TRĂNG KHUYẾT - Phóng đại bão đao trăng tỏa 360 độ
      */
     triggerUltimateAttack() {
         if (this.isGameOver || !this.player || !this.player.active) return;
-        if (this.player.ultimateEnergy < 100 || this.isMegaLaserActive || this.isThunderActive) return;
+        if (this.player.ultimateEnergy < 100 || this.isMegaLaserActive || this.isThunderActive || this.isCrescentStormActive) return;
 
-        if (this.selectedShipBase === 'player2') {
+        if (this.selectedShipBase === 'player3') {
+            this.triggerCrescentBladeStorm();
+        } else if (this.selectedShipBase === 'player2') {
             this.triggerThunderStrike();
         } else {
             this.triggerMegaLaser();
         }
+    }
+
+    /**
+     * 🌙 BÃO ĐAO TRĂNG KHUYẾT (ULTI PHI THUYỀN 3 - CRESCENT BLADE STORM):
+     * Phóng ra 18 đại vầng trăng khuyết xoay tít tỏa rộng 360 độ hủy diệt toàn bộ đạn địch và chém nát kẻ thù
+     */
+    triggerCrescentBladeStorm() {
+        this.player.ultimateEnergy = 0;
+        this.isCrescentStormActive = true;
+
+        window.soundFX.playUltimate();
+        window.soundFX.playBladeSlash();
+        this.cameras.main.shake(350, 0.016);
+        this.cameras.main.flash(260, 0, 255, 230);
+
+        const { width, height } = this.scale;
+        const px = this.player.x;
+        const py = this.player.y;
+        this.showFloatingText(width / 2, height / 2, '🌙 BÃO ĐAO TRĂNG KHUYẾT! 🌙', '#00ffea');
+
+        // Xóa toàn bộ đạn địch hiện hữu
+        this.enemyBullets.getChildren().slice().forEach(b => {
+            if (b.active) b.destroy();
+        });
+
+        // 18 đại đao trăng khuyết phóng tỏa ra mọi hướng
+        const bladesCount = 18;
+        for (let i = 0; i < bladesCount; i++) {
+            const angle = (Math.PI * 2 / bladesCount) * i;
+            const blade = this.playerBullets.create(px, py, 'bullet_giant_crescent');
+            if (blade) {
+                blade.setDisplaySize(72, 72);
+                blade.setDepth(23);
+                blade.setBlendMode('ADD');
+                blade.isCrescent = true;
+                blade.damage = 180; // Sát thương tuyệt chiêu cực khủng
+                blade.setAngularVelocity(1080); // Xoay như bão lốc
+                const speed = 520;
+                blade.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+
+                // Tự tiêu biến sau 2.2s
+                this.time.delayedCall(2200, () => {
+                    if (blade && blade.active) blade.destroy();
+                });
+            }
+        }
+
+        // Đợt 2: Vòng xoáy đao thứ hai phóng sau 250ms
+        this.time.delayedCall(250, () => {
+            if (this.isGameOver || !this.player || !this.player.active) return;
+            window.soundFX.playBladeSlash();
+            for (let i = 0; i < bladesCount; i++) {
+                const angle = (Math.PI * 2 / bladesCount) * i + (Math.PI / bladesCount);
+                const blade = this.playerBullets.create(this.player.x, this.player.y, 'bullet_crescent_blade');
+                if (blade) {
+                    blade.setDisplaySize(54, 54);
+                    blade.setDepth(23);
+                    blade.setBlendMode('ADD');
+                    blade.isCrescent = true;
+                    blade.damage = 120;
+                    blade.setAngularVelocity(-900);
+                    const speed = 580;
+                    blade.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+
+                    this.time.delayedCall(2000, () => {
+                        if (blade && blade.active) blade.destroy();
+                    });
+                }
+            }
+        });
+
+        this.time.delayedCall(1200, () => {
+            this.isCrescentStormActive = false;
+        });
     }
 
     /**
@@ -3289,24 +3436,19 @@ class GameScene extends Phaser.Scene {
     handleResize(gameSize) {
         const { width, height } = gameSize;
         this.physics.world.setBounds(0, 0, width, height);
-        const newIsPortrait = height >= width;
+        // Hướng màn hình cố định theo Round: Round 1 & 2 = Dọc, Round 3 = Ngang
+        this.isPortrait = this.round <= 2;
 
         // Cập nhật kích thước nền Round 2/3
         if (this.bgSprite1 && this.bgSprite2) {
             this.layoutRoundBackdrop(width, height);
         }
 
-        if (newIsPortrait !== this.isPortrait) {
-            this.isPortrait = newIsPortrait;
-            if (this.round >= 2) {
-                this.applyRoundBackdrop();
-            }
-            if (this.player && this.player.active) {
-                const newKey = this.getPlayerSpriteKey();
-                if (newKey && this.textures.exists(newKey)) {
-                    this.player.setTexture(newKey);
-                    this.fitPlayerSize();
-                }
+        if (this.player && this.player.active) {
+            const newKey = this.getPlayerSpriteKey();
+            if (newKey && this.textures.exists(newKey)) {
+                this.player.setTexture(newKey);
+                this.fitPlayerSize();
             }
         }
     }

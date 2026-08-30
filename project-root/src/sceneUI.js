@@ -418,7 +418,10 @@ class UIScene extends Phaser.Scene {
         btnPlay.on('pointerout', () => btnPlay.setStyle({ backgroundColor: '#ff0044' }));
         btnPlay.on('pointerdown', () => {
             this.scene.stop('UIScene');
-            this.scene.start('GameScene');
+            const roundNum = (this.gameScene && this.gameScene.round) ? this.gameScene.round : 1;
+            const shipBase = (this.gameScene && this.gameScene.selectedShipBase) ? this.gameScene.selectedShipBase : 'player1';
+            const isRoundPortrait = roundNum <= 2;
+            this.scene.start('GameScene', { round: roundNum, shipType: shipBase + (isRoundPortrait ? 'a' : 'b') });
         });
 
         modal.add([bg, title, subtitle, scoreVal, enemyVal, btnPlay]);
@@ -455,18 +458,19 @@ class UIScene extends Phaser.Scene {
             color: '#ffffff'
         }).setOrigin(0.5);
 
-        const btnPlay = this.add.text(0, 90, 'CHƠI TIẾP', {
+        const btnPlay = this.add.text(0, 90, 'CHƠI LẠI TỪ ĐẦU', {
             fontFamily: 'Orbitron, sans-serif',
-            fontSize: '18px',
+            fontSize: '16px',
             fontWeight: '800',
             color: '#030712',
             backgroundColor: '#00ff88',
-            padding: { left: 24, right: 24, top: 12, bottom: 12 }
+            padding: { left: 20, right: 20, top: 12, bottom: 12 }
         }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
         btnPlay.on('pointerdown', () => {
             this.scene.stop('UIScene');
-            this.scene.start('GameScene');
+            const shipBase = (this.gameScene && this.gameScene.selectedShipBase) ? this.gameScene.selectedShipBase : 'player1';
+            this.scene.start('GameScene', { round: 1, shipType: shipBase + 'a' });
         });
 
         modal.add([bg, title, scoreVal, enemyVal, btnPlay]);
