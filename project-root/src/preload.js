@@ -766,6 +766,18 @@ class PreloadScene extends Phaser.Scene {
         // 12. LƯỠI LIỀM LỬA ĐỎ (ULTIMATE P3 - RED FIRE CRESCENT BLADES - 2 đầu nhọn hoắc + đốm lửa)
         this.createFireCrescentTexture('bullet_crescent_blade_fire', 44);
         this.createFireCrescentTexture('bullet_giant_crescent_fire', 110);
+        this.createElegantCrescentTexture('bullet_crescent_blade_v2', 52);
+    }
+
+    createElegantCrescentTexture(key, size) {
+        const cv = this.textures.createCanvas(key, size, size), ctx = cv.context;
+        const c = size / 2, r = size * 0.40, cutR = size * 0.34;
+        ctx.save(); ctx.shadowColor = '#7df9ff'; ctx.shadowBlur = size * 0.20;
+        ctx.beginPath(); ctx.arc(c, c, r, -Math.PI * 0.82, Math.PI * 0.82); ctx.arc(c - size * 0.18, c, cutR, Math.PI * 0.78, -Math.PI * 0.78, true); ctx.closePath();
+        const g = ctx.createLinearGradient(c - r, c, c + r, c); g.addColorStop(0, '#ffffff'); g.addColorStop(0.35, '#bfffff'); g.addColorStop(0.72, '#29d9ff'); g.addColorStop(1, '#0875ff');
+        ctx.fillStyle = g; ctx.fill(); ctx.shadowBlur = 0; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(1.5, size * 0.035); ctx.stroke();
+        ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(c + r * 0.63, c - r * 0.55, size * 0.045, 0, Math.PI * 2); ctx.arc(c + r * 0.63, c + r * 0.55, size * 0.045, 0, Math.PI * 2); ctx.fill();
+        ctx.restore(); cv.refresh();
     }
 
     /**

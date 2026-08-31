@@ -18,7 +18,7 @@ class UIScene extends Phaser.Scene {
         this.hudGraphics = this.add.graphics();
         
         // 1. Text Điểm Số (Score)
-        this.scoreText = this.add.text(20, 20, 'SCORE: 0', {
+        this.scoreText = this.add.text(20, 20, `${t('score')}: 0`, {
             fontFamily: 'Orbitron, sans-serif',
             fontSize: '18px',
             fontWeight: '800',
@@ -235,7 +235,7 @@ class UIScene extends Phaser.Scene {
 
         // Cập nhật text Điểm & Wave
         if (data.score !== undefined) {
-            this.scoreText.setText(`SCORE: ${data.score}`);
+            this.scoreText.setText(`${t('score')}: ${data.score}`);
         }
         if (data.wave !== undefined) {
             this.waveText.setText(`WAVE ${data.wave}`);
@@ -424,7 +424,13 @@ class UIScene extends Phaser.Scene {
             this.scene.start('GameScene', { round: roundNum, shipType: shipBase + (isRoundPortrait ? 'a' : 'b') });
         });
 
-        modal.add([bg, title, subtitle, scoreVal, enemyVal, btnPlay]);
+        const btnHome = this.add.text(0, 150, '⌂ VỀ TRANG CHỦ', {
+            fontFamily: 'Orbitron, sans-serif', fontSize: '13px', fontWeight: '800', color: '#ffffff',
+            backgroundColor: '#1e293b', padding: { left: 18, right: 18, top: 9, bottom: 9 }
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+        btnHome.on('pointerdown', () => { document.body.classList.remove('game-active'); this.scene.stop('GameScene'); this.scene.start('MenuScene'); });
+
+        modal.add([bg, title, subtitle, scoreVal, enemyVal, btnPlay, btnHome]);
     }
 
     showVictoryScreen(stats) {
@@ -473,7 +479,13 @@ class UIScene extends Phaser.Scene {
             this.scene.start('GameScene', { round: 1, shipType: shipBase + 'a' });
         });
 
-        modal.add([bg, title, scoreVal, enemyVal, btnPlay]);
+        const btnHome = this.add.text(0, 150, '⌂ VỀ TRANG CHỦ', {
+            fontFamily: 'Orbitron, sans-serif', fontSize: '13px', fontWeight: '800', color: '#ffffff',
+            backgroundColor: '#1e293b', padding: { left: 18, right: 18, top: 9, bottom: 9 }
+        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+        btnHome.on('pointerdown', () => { document.body.classList.remove('game-active'); this.scene.stop('GameScene'); this.scene.start('MenuScene'); });
+
+        modal.add([bg, title, scoreVal, enemyVal, btnPlay, btnHome]);
     }
 
     handleResize(gameSize) {

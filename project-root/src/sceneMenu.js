@@ -12,6 +12,10 @@ class MenuScene extends Phaser.Scene {
     }
 
     create() {
+        document.body.classList.remove('game-active');
+        // Đảm bảo Menu không bị chồng lên gameplay/HUD còn sót sau khi đổi hướng hoặc về trang chủ.
+        if (this.scene.isActive('UIScene')) this.scene.stop('UIScene');
+        if (this.scene.isActive('GameScene')) this.scene.stop('GameScene');
         const { width, height } = this.scale;
         document.body.classList.remove('game-active');
         this.menuElements = [];
@@ -373,6 +377,9 @@ class MenuScene extends Phaser.Scene {
 
         const initialKey = this.selectedShipBase + (isPortrait ? 'a' : 'b');
         const shipImg = this.add.image(0, 0, initialKey);
+        shipImg._spriteVariant = this.selectedShipBase;
+        const menuTint = window.spriteConfig && window.spriteConfig.player && window.spriteConfig.player.tint;
+        if (typeof menuTint === 'string' && /^#[0-9a-f]{6}$/i.test(menuTint)) shipImg.setTint(parseInt(menuTint.slice(1), 16));
         this.fitShipPreview(shipImg, isPortrait);
 
         this.tweens.add({
@@ -436,6 +443,7 @@ class MenuScene extends Phaser.Scene {
             const newKey = this.selectedShipBase + (currentIsPortrait ? 'a' : 'b');
             if (this.textures.exists(newKey)) {
                 shipImg.setTexture(newKey);
+                shipImg._spriteVariant = this.selectedShipBase;
                 this.fitShipPreview(shipImg, currentIsPortrait);
             }
             window.soundFX.playLaser(1.5);
@@ -453,13 +461,15 @@ class MenuScene extends Phaser.Scene {
             // Scale theo chiều cao như trong game, giữ đúng tỉ lệ (không bóp méo)
             const origW = shipImg.width || 64;
             const origH = shipImg.height || 64;
-            const targetH = 95;
+            const variant = shipImg._spriteVariant || 'player1';
+            const targetH = window.sc('player', variant + 'PortraitHeight') || window.sc('player', 'menuPortraitHeight') || 95;
             const targetW = (origW / origH) * targetH;
             shipImg.setDisplaySize(targetW, targetH);
         } else {
             const origW = shipImg.width || 64;
             const origH = shipImg.height || 64;
-            const targetW = 130;
+            const variant = shipImg._spriteVariant || 'player1';
+            const targetW = window.sc('player', variant + 'LandscapeWidth') || window.sc('player', 'menuLandscapeWidth') || 130;
             const targetH = (origH / origW) * targetW;
             shipImg.setDisplaySize(targetW, targetH);
         }
@@ -480,11 +490,11 @@ class MenuScene extends Phaser.Scene {
 
         const box = this.add.graphics();
         box.fillStyle(0x0a1628, 0.95);
-        box.fillRoundedRect(-155, -160, 310, 320, 16);
+        box.fillRoundedRect(-155, -185, 310, 390, 16);
         box.lineStyle(2, 0x00f0ff, 0.9);
         box.strokeRoundedRect(-155, -160, 310, 320, 16);
 
-        const title = this.add.text(0, -120, '⚙️ CÀI ĐẶT HỆ THỐNG', {
+        const title = this.add.text(0, -145, t('settings'), {
             fontFamily: 'Orbitron, sans-serif',
             fontSize: '18px',
             fontWeight: '900',
@@ -492,7 +502,7 @@ class MenuScene extends Phaser.Scene {
         }).setOrigin(0.5);
 
         // 1. Tùy chọn Âm thanh
-        const soundLabel = this.add.text(-120, -60, '🔊 Âm thanh (SFX):', {
+        const soundLabel = this.add.text(-120, -80, t('sound'), {
             fontFamily: 'Rajdhani, sans-serif',
             fontSize: '16px',
             fontWeight: '700',
@@ -523,7 +533,7 @@ class MenuScene extends Phaser.Scene {
         });
 
         // 2. Tùy chọn Đồ họa
-        const gfxLabel = this.add.text(-120, 0, '✨ Đồ họa (VFX):', {
+        const gfxLabel = this.add.text(-120, -20, t('graphics'), {
             fontFamily: 'Rajdhani, sans-serif',
             fontSize: '16px',
             fontWeight: '700',
@@ -540,7 +550,7 @@ class MenuScene extends Phaser.Scene {
         }).setOrigin(0.5);
 
         // 3. Phím tắt điều khiển
-        const ctrlLabel = this.add.text(-120, 60, '⌨️ Phím tắt:', {
+        const ctrlLabel = this.add.text(-120, 40, t('controls'), {
             fontFamily: 'Rajdhani, sans-serif',
             fontSize: '16px',
             fontWeight: '700',
@@ -558,7 +568,7 @@ class MenuScene extends Phaser.Scene {
             wordWrap: { width: 190 }
         }).setOrigin(0.5);
 
-        const roundLabel = this.add.text(-120, 112, '🌍 Vòng chơi:', {
+        const roundLabel = this.add.text(-120, 100, '🌍 Round:', {
             fontFamily: 'Rajdhani, sans-serif',
             fontSize: '15px',
             fontWeight: '700',
@@ -571,7 +581,7 @@ class MenuScene extends Phaser.Scene {
             return 'V3: NGANG 💻';
         };
 
-        const roundBtn = this.add.text(60, 112, getRoundLabelText(this.selectedRound), {
+        const roundBtn = this.add.text(60, 100, getRoundLabelText(this.selectedRound), {
             fontFamily: 'Orbitron, sans-serif',
             fontSize: '11px',
             fontWeight: '800',
@@ -586,8 +596,12 @@ class MenuScene extends Phaser.Scene {
             window.soundFX.playLaser(1.2);
         });
 
+        const langLabel = this.add.text(-120, 145, '🌐 ' + t('language') + ':', { fontFamily: 'Rajdhani, sans-serif', fontSize: '15px', fontWeight: '700', color: '#ffffff' });
+        const langBtn = this.add.text(60, 145, window.I18N.lang === 'vi' ? 'VIỆT' : 'ENGLISH', { fontFamily: 'Orbitron, sans-serif', fontSize: '11px', fontWeight: '800', color: '#00f0ff', backgroundColor: '#1e293b', padding: { left: 10, right: 10, top: 5, bottom: 5 } }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+        langBtn.on('pointerdown', () => { window.I18N.setLanguage(window.I18N.lang === 'vi' ? 'en' : 'vi'); langBtn.setText(window.I18N.lang === 'vi' ? 'VIỆT' : 'ENGLISH'); langLabel.setText('🌐 ' + t('language') + ':'); title.setText(t('settings')); soundLabel.setText(t('sound')); gfxLabel.setText(t('graphics')); ctrlLabel.setText(t('controls')); btnClose.setText(t('close')); });
+
         // Nút Đóng
-        const btnClose = this.add.text(0, 145, 'ĐÓNG ✕', {
+        const btnClose = this.add.text(0, 190, t('close'), {
             fontFamily: 'Orbitron, sans-serif',
             fontSize: '14px',
             fontWeight: '800',
@@ -601,7 +615,7 @@ class MenuScene extends Phaser.Scene {
             this.currentModal = null;
         });
 
-        modal.add([backdrop, box, title, soundLabel, soundBtn, gfxLabel, gfxBtn, ctrlLabel, ctrlInfo, roundLabel, roundBtn, btnClose]);
+        modal.add([backdrop, box, title, soundLabel, soundBtn, gfxLabel, gfxBtn, ctrlLabel, ctrlInfo, roundLabel, roundBtn, langLabel, langBtn, btnClose]);
     }
 
     /**

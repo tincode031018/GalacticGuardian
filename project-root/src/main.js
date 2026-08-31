@@ -3,7 +3,14 @@
  * Khởi tạo Phaser 3 Game Instance, Cấu hình Render WebGL/Canvas, Tối ưu Màn hình Dọc & Ngang Mobile
  */
 
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
+    // Nạp cấu hình kích thước sprite (nếu có sprite-sizes.json cạnh index.html)
+    try {
+        await window.loadSpriteConfig('sprite-sizes.json');
+    } catch (e) {
+        // Nếu không nạp được thì spriteConfig đã là mặc định
+    }
+
     // Kích thước ban đầu phù hợp với thiết bị
     const width = window.innerWidth;
     const height = window.innerHeight;

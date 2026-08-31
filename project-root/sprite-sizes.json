@@ -1,0 +1,124 @@
+{
+  "rounds": {
+    "round1Waves": 20,
+    "round1Enemies": 4,
+    "round1OrbDrop": 10,
+    "round2Waves": 20,
+    "round2Enemies": 8,
+    "round2OrbDrop": 5,
+    "round3Waves": 20,
+    "round3Enemies": 10,
+    "round3OrbDrop": 5
+  },
+  "player": {
+    "portraitHeight": 75,
+    "landscapeWidth": 90,
+    "menuPortraitHeight": 95,
+    "menuLandscapeWidth": 130,
+    "tint": "#ffffff",
+    "player1PortraitHeight": 75,
+    "player1LandscapeWidth": 90,
+    "player2PortraitHeight": 75,
+    "player2LandscapeWidth": 90,
+    "player3PortraitHeight": 75,
+    "player3LandscapeWidth": 90,
+    "variants": {
+      "player1": {
+        "tint": "#ffffff",
+        "rotation": 0,
+        "flipX": false,
+        "flipY": false
+      },
+      "player2": {
+        "tint": "#ffffff",
+        "rotation": 0,
+        "flipX": false,
+        "flipY": false
+      },
+      "player3": {
+        "tint": "#ffffff",
+        "rotation": 0,
+        "flipX": false,
+        "flipY": false
+      }
+    }
+  },
+  "enemy": {
+    "portraitHeight": 75,
+    "landscapeWidth": 90,
+    "tint": "#ffffff",
+    "enemy1PortraitHeight": 75,
+    "enemy1LandscapeWidth": 90,
+    "enemy2PortraitHeight": 85,
+    "enemy2LandscapeWidth": 105,
+    "enemy3PortraitHeight": 150,
+    "enemy3LandscapeWidth": 159,
+    "variants": {
+      "enemy1": {
+        "tint": "#ffffff",
+        "rotation": 0,
+        "flipX": false,
+        "flipY": false
+      },
+      "enemy2": {
+        "tint": "#ffffff",
+        "rotation": 0,
+        "flipX": false,
+        "flipY": false
+      },
+      "enemy3": {
+        "tint": "#ffffff",
+        "rotation": 0,
+        "flipX": false,
+        "flipY": false
+      }
+    }
+  },
+  "boss": {
+    "round1Portrait": 220,
+    "round1Landscape": 250,
+    "round2RedPortrait": 220,
+    "round2RedLandscape": 250,
+    "round2GreenPortrait": 220,
+    "round2GreenLandscape": 245,
+    "round3Portrait": 240,
+    "round3Landscape": 270,
+    "tint": "#ffffff",
+    "variants": {
+      "round1": {
+        "tint": "#189052",
+        "rotation": 0,
+        "flipX": false,
+        "flipY": false
+      },
+      "round2Red": {
+        "tint": "#ffffff",
+        "rotation": 0,
+        "flipX": false,
+        "flipY": false
+      },
+      "round2Green": {
+        "tint": "#081627",
+        "rotation": 0,
+        "flipX": false,
+        "flipY": false
+      },
+      "round3": {
+        "tint": "#ffffff",
+        "rotation": 0,
+        "flipX": false,
+        "flipY": false
+      }
+    }
+  },
+  "meteor": {
+    "sizeMin": 26,
+    "sizeMax": 58
+  },
+  "satellite": {
+    "size": 60
+  },
+  "shield": {
+    "size": 95
+  }
+}
