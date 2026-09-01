@@ -157,7 +157,11 @@ class GameScene extends Phaser.Scene {
         this.events.emit('showBanner', `🌍 ROUND ${this.round} BẮT ĐẦU!`);
 
         // Resize & Orientation Listener
+        this.scale.off('resize', this.handleResize, this);
         this.scale.on('resize', this.handleResize, this);
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+            this.scale.off('resize', this.handleResize, this);
+        });
     }
 
     getPlayerSpriteKey() {
@@ -3633,6 +3637,9 @@ class GameScene extends Phaser.Scene {
     }
 
     handleResize(gameSize) {
+        // Scale Manager sống lâu hơn Scene. Bỏ qua callback trễ khi GameScene
+        // đã dừng và Physics World đã được Phaser giải phóng.
+        if (!gameSize || !this.physics || !this.physics.world) return;
         const { width, height } = gameSize;
         this.physics.world.setBounds(0, 0, width, height);
         // Hướng màn hình cố định theo Round: Round 1 & 2 = Dọc, Round 3 = Ngang

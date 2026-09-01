@@ -108,8 +108,8 @@ body.game-active #mobile-controls {
     position: absolute;
     bottom: 25px;
     right: 25px;
-    width: 180px;
-    height: 170px;
+    width: 226px;
+    height: 80px;
     pointer-events: auto;
 }
 
@@ -139,7 +139,7 @@ body.game-active #mobile-controls {
 .btn-fire {
     position: absolute;
     right: 0;
-    bottom: 20px;
+    bottom: 0;
     width: 80px;
     height: 80px;
     background: radial-gradient(circle at 35% 35%, #ff4b4b 0%, #d80027 70%, #7b0014 100%);
@@ -156,8 +156,8 @@ body.game-active #mobile-controls {
 
 .btn-capture {
     position: absolute;
-    left: 0;
-    bottom: 0;
+    right: 161px;
+    bottom: 7px;
     width: 65px;
     height: 65px;
     background: radial-gradient(circle at 35% 35%, #00ffff 0%, #7928ca 70%, #2a085c 100%);
@@ -187,8 +187,8 @@ body.game-active #mobile-controls {
 
 .btn-ultimate {
     position: absolute;
-    left: 0;
-    top: 0;
+    right: 88px;
+    bottom: 7px;
     width: 65px;
     height: 65px;
     background: radial-gradient(circle at 35% 35%, #ffd700 0%, #ff8c00 70%, #b84500 100%);
@@ -370,8 +370,18 @@ body.game-active #mobile-controls {
     .action-zone {
         bottom: max(12px, env(safe-area-inset-bottom));
         right: 12px;
-        width: 150px;
-        height: 145px;
+        width: 204px;
+        height: 70px;
+    }
+
+    .btn-capture {
+        right: 139px;
+        bottom: 6px;
+    }
+
+    .btn-ultimate {
+        right: 76px;
+        bottom: 6px;
     }
 
     .action-btn small {

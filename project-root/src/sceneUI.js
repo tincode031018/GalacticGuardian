@@ -82,7 +82,20 @@ class UIScene extends Phaser.Scene {
         this.gameScene.events.on('victory', this.showVictoryScreen, this);
 
         // Resize Listener
+        this.scale.off('resize', this.handleResize, this);
         this.scale.on('resize', this.handleResize, this);
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+            this.scale.off('resize', this.handleResize, this);
+            if (this.gameScene && this.gameScene.events) {
+                this.gameScene.events.off('updateHUD', this.updateHUD, this);
+                this.gameScene.events.off('orbAvailable', this.setOrbState, this);
+                this.gameScene.events.off('bossSpawned', this.showBossBar, this);
+                this.gameScene.events.off('bossDefeated', this.hideBossBar, this);
+                this.gameScene.events.off('showBanner', this.showNotification, this);
+                this.gameScene.events.off('gameOver', this.showGameOverScreen, this);
+                this.gameScene.events.off('victory', this.showVictoryScreen, this);
+            }
+        });
     }
 
     setupDOMControls() {
@@ -92,6 +105,16 @@ class UIScene extends Phaser.Scene {
             btnSound.onclick = () => {
                 const muted = window.soundFX.toggleMute();
                 btnSound.innerText = muted ? '🔇' : '🔊';
+            };
+        }
+
+        // Home button
+        const btnHome = document.getElementById('btn-home');
+        if (btnHome) {
+            btnHome.onclick = () => {
+                document.body.classList.remove('game-active');
+                if (this.scene.isActive('GameScene')) this.scene.stop('GameScene');
+                this.scene.start('MenuScene');
             };
         }
 
@@ -489,6 +512,7 @@ class UIScene extends Phaser.Scene {
     }
 
     handleResize(gameSize) {
+        if (!gameSize || !this.sys || !this.sys.isActive()) return;
         const { width, height } = gameSize;
         this.applyResponsiveLayout(width, height);
     }

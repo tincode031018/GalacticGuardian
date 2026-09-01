@@ -19,6 +19,11 @@ class MenuScene extends Phaser.Scene {
         const { width, height } = this.scale;
         document.body.classList.remove('game-active');
         this.menuElements = [];
+        // Scene instance được Phaser tái sử dụng sau khi quay về từ gameplay.
+        // Các GameObject cũ đã bị hủy nhưng tham chiếu JS vẫn còn, cần đặt lại
+        // để nền riêng của màn hình chọn phi thuyền được tạo lại.
+        this.shipMenuBackground = null;
+        this.currentModal = null;
         const isPortrait = height >= width;
         const homeKey = isPortrait ? 'homescreen' : 'homescreen2';
         const hasHomeBackground = this.textures.exists(homeKey);
@@ -240,9 +245,16 @@ class MenuScene extends Phaser.Scene {
         this.showIntroScreen(width, height);
 
         // Resize Listener
-        this.scale.on('resize', () => {
-            this.scene.restart();
+        this.scale.off('resize', this.handleResize, this);
+        this.scale.on('resize', this.handleResize, this);
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+            this.scale.off('resize', this.handleResize, this);
         });
+    }
+
+    handleResize() {
+        if (!this.sys || !this.sys.isActive()) return;
+        this.scene.restart();
     }
 
     showIntroScreen(width, height) {
@@ -492,7 +504,7 @@ class MenuScene extends Phaser.Scene {
         box.fillStyle(0x0a1628, 0.95);
         box.fillRoundedRect(-155, -185, 310, 390, 16);
         box.lineStyle(2, 0x00f0ff, 0.9);
-        box.strokeRoundedRect(-155, -160, 310, 320, 16);
+        box.strokeRoundedRect(-155, -185, 310, 390, 16);
 
         const title = this.add.text(0, -145, t('settings'), {
             fontFamily: 'Orbitron, sans-serif',
@@ -507,10 +519,10 @@ class MenuScene extends Phaser.Scene {
             fontSize: '16px',
             fontWeight: '700',
             color: '#ffffff'
-        });
+        }).setOrigin(0, 0.5);
 
         const isMuted = window.soundFX && window.soundFX.ctx && window.soundFX.ctx.state === 'suspended';
-        const soundBtn = this.add.text(60, -50, isMuted ? 'TẮT ✕' : 'BẬT ✓', {
+        const soundBtn = this.add.text(60, -80, isMuted ? 'TẮT ✕' : 'BẬT ✓', {
             fontFamily: 'Orbitron, sans-serif',
             fontSize: '13px',
             fontWeight: '800',
@@ -538,9 +550,9 @@ class MenuScene extends Phaser.Scene {
             fontSize: '16px',
             fontWeight: '700',
             color: '#ffffff'
-        });
+        }).setOrigin(0, 0.5);
 
-        const gfxBtn = this.add.text(60, 10, 'CAO (60 FPS)', {
+        const gfxBtn = this.add.text(60, -20, 'CAO (60 FPS)', {
             fontFamily: 'Orbitron, sans-serif',
             fontSize: '12px',
             fontWeight: '800',
@@ -555,9 +567,9 @@ class MenuScene extends Phaser.Scene {
             fontSize: '16px',
             fontWeight: '700',
             color: '#ffffff'
-        });
+        }).setOrigin(0, 0.5);
 
-        const ctrlInfo = this.add.text(60, 70, 'PC: WASD + Chuột + Space + E\nMobile: Cần gạt + Bắn + E', {
+        const ctrlInfo = this.add.text(60, 40, 'PC: WASD + Chuột + Space + E\nMobile: Cần gạt + Bắn + E', {
             fontFamily: 'Orbitron, sans-serif',
             fontSize: '10px',
             fontWeight: '800',
@@ -573,7 +585,7 @@ class MenuScene extends Phaser.Scene {
             fontSize: '15px',
             fontWeight: '700',
             color: '#ffffff'
-        });
+        }).setOrigin(0, 0.5);
 
         const getRoundLabelText = (r) => {
             if (r === 1) return 'V1: DỌC 📱';
@@ -596,7 +608,7 @@ class MenuScene extends Phaser.Scene {
             window.soundFX.playLaser(1.2);
         });
 
-        const langLabel = this.add.text(-120, 145, '🌐 ' + t('language') + ':', { fontFamily: 'Rajdhani, sans-serif', fontSize: '15px', fontWeight: '700', color: '#ffffff' });
+        const langLabel = this.add.text(-120, 145, '🌐 ' + t('language') + ':', { fontFamily: 'Rajdhani, sans-serif', fontSize: '15px', fontWeight: '700', color: '#ffffff' }).setOrigin(0, 0.5);
         const langBtn = this.add.text(60, 145, window.I18N.lang === 'vi' ? 'VIỆT' : 'ENGLISH', { fontFamily: 'Orbitron, sans-serif', fontSize: '11px', fontWeight: '800', color: '#00f0ff', backgroundColor: '#1e293b', padding: { left: 10, right: 10, top: 5, bottom: 5 } }).setOrigin(0.5).setInteractive({ useHandCursor: true });
         langBtn.on('pointerdown', () => { window.I18N.setLanguage(window.I18N.lang === 'vi' ? 'en' : 'vi'); langBtn.setText(window.I18N.lang === 'vi' ? 'VIỆT' : 'ENGLISH'); langLabel.setText('🌐 ' + t('language') + ':'); title.setText(t('settings')); soundLabel.setText(t('sound')); gfxLabel.setText(t('graphics')); ctrlLabel.setText(t('controls')); btnClose.setText(t('close')); });
 
@@ -616,6 +628,35 @@ class MenuScene extends Phaser.Scene {
         });
 
         modal.add([backdrop, box, title, soundLabel, soundBtn, gfxLabel, gfxBtn, ctrlLabel, ctrlInfo, roundLabel, roundBtn, langLabel, langBtn, btnClose]);
+
+        // Giữ toàn bộ nội dung trong vùng nhìn thấy ở cả màn hình dọc và ngang thấp.
+        const useWideLayout = width > height && height < 430;
+        if (useWideLayout) {
+            box.clear();
+            box.fillStyle(0x0a1628, 0.95);
+            box.fillRoundedRect(-270, -150, 540, 300, 16);
+            box.lineStyle(2, 0x00f0ff, 0.9);
+            box.strokeRoundedRect(-270, -150, 540, 300, 16);
+
+            title.setPosition(0, -122);
+            soundLabel.setPosition(-238, -82);
+            soundBtn.setPosition(-72, -72);
+            gfxLabel.setPosition(-238, -24);
+            gfxBtn.setPosition(-72, -14);
+            roundLabel.setPosition(24, -82);
+            roundBtn.setPosition(190, -72);
+            langLabel.setPosition(24, -24);
+            langBtn.setPosition(190, -14);
+            ctrlLabel.setPosition(-238, 48);
+            ctrlInfo.setPosition(72, 58).setWordWrapWidth(330);
+            btnClose.setPosition(0, 122);
+        }
+
+        const naturalWidth = useWideLayout ? 540 : 310;
+        const naturalHeight = useWideLayout ? 300 : 390;
+        const settingsScale = Math.min(1.18, (width - 24) / naturalWidth, (height - 24) / naturalHeight);
+        backdrop.setScale(1 / settingsScale);
+        modal.setScale(settingsScale);
     }
 
     /**
@@ -680,21 +721,7 @@ class MenuScene extends Phaser.Scene {
             wordWrap: { width: viewportWidth }
         }).setOrigin(0, 0);
 
-        const clipArea = this.add.graphics();
-        clipArea.fillStyle(0xffffff, 1);
-        clipArea.fillRect(
-            width / 2 + viewportLeft,
-            height / 2 + viewportTop,
-            viewportWidth,
-            viewportHeight
-        );
-        clipArea.setVisible(true).setAlpha(0.001);
         const needsScroll = infoText.height > viewportHeight;
-        if (needsScroll) {
-            infoText.setMask(clipArea.createGeometryMask());
-        } else {
-            clipArea.destroy();
-        }
 
         const scrollArea = this.add.rectangle(
             viewportLeft + viewportWidth / 2,
@@ -711,7 +738,11 @@ class MenuScene extends Phaser.Scene {
         const applyScroll = (offset) => {
             scrollOffset = Phaser.Math.Clamp(offset, 0, maxScroll());
             infoText.y = contentTop - scrollOffset;
+            if (needsScroll) {
+                infoText.setCrop(0, scrollOffset, viewportWidth, viewportHeight);
+            }
         };
+        applyScroll(0);
 
         scrollArea.on('pointerdown', (pointer) => {
             dragStartY = pointer.y;
@@ -729,7 +760,7 @@ class MenuScene extends Phaser.Scene {
             if (this.currentModal === modal) applyScroll(scrollOffset + deltaY * 0.6);
         });
 
-        const btnClose = this.add.text(0, 150, 'ĐÃ HIỂU ✓', {
+        const btnClose = this.add.text(0, top + boxHeight - 25, 'ĐÃ HIỂU ✓', {
             fontFamily: 'Orbitron, sans-serif',
             fontSize: '14px',
             fontWeight: '800',
